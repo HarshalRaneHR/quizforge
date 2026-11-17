@@ -14,7 +14,7 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: update        # replaced by Flyway in v2
+      ddl-auto: validate      # Flyway owns the schema (src/main/resources/db/migration); Hibernate only checks it
     open-in-view: false       # forces loading data inside @Transactional services
   data:
     web:

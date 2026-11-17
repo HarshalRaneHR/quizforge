@@ -2,8 +2,10 @@ package com.harshal.quizforge.auth;
 
 import com.harshal.quizforge.auth.AuthDtos.AuthResponse;
 import com.harshal.quizforge.auth.AuthDtos.LoginRequest;
+import com.harshal.quizforge.auth.AuthDtos.MeResponse;
 import com.harshal.quizforge.auth.AuthDtos.RegisterRequest;
 import com.harshal.quizforge.common.ConflictException;
+import com.harshal.quizforge.common.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,8 +40,14 @@ public class AuthService {
         return tokenFor(users.findByEmail(email).orElseThrow());
     }
 
+    public MeResponse me(String email) {
+        User user = users.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        return new MeResponse(user.getEmail(), user.getRole().name(), AuthDtos.permissionsOf(user.getRole()));
+    }
+
     private AuthResponse tokenFor(User user) {
         String role = user.getRole().name();
-        return new AuthResponse(jwt.generate(user.getEmail(), role), user.getEmail(), role);
+        return new AuthResponse(jwt.generate(user.getEmail(), role), user.getEmail(), role,
+                AuthDtos.permissionsOf(user.getRole()));
     }
 }

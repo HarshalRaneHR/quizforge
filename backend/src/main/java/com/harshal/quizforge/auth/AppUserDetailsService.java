@@ -12,6 +12,10 @@ public class AppUserDetailsService implements UserDetailsService {
 
     private final UserRepository users;
 
+    /**
+     * Loaded on every authenticated request (see JwtAuthFilter), so a role change by an admin
+     * takes effect immediately — the role inside an old JWT is never trusted.
+     */
     @Override
     public UserDetails loadUserByUsername(String email) {
         User user = users.findByEmail(email)
@@ -19,7 +23,7 @@ public class AppUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPasswordHash())
-                .roles(user.getRole().name())     // becomes ROLE_USER / ROLE_ADMIN
+                .authorities(user.getRole().authorities())   // ROLE_X + permission authorities
                 .build();
     }
 }

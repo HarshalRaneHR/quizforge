@@ -63,8 +63,8 @@ public class QuizService {
     }
 
     @Transactional
-    public void delete(String email, Long id, boolean isAdmin) {
-        Quiz quiz = isAdmin
+    public void delete(String email, Long id, boolean canManageAll) {
+        Quiz quiz = canManageAll
                 ? quizRepo.findById(id).orElseThrow(() -> new NotFoundException("Quiz not found"))
                 : getOwnedQuiz(email, id);
         attemptRepo.deleteByQuizId(quiz.getId());   // attempts reference the quiz (FK)

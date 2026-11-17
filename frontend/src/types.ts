@@ -1,6 +1,6 @@
 // Mirrors the backend DTOs.
-export type Role = 'USER' | 'ADMIN';
-export type AuthResponse = { token: string; email: string; role: Role };
+export type Role = 'LEARNER' | 'INSTRUCTOR' | 'ADMIN';
+export type AuthResponse = { token: string; email: string; role: Role; permissions: string[] };
 
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };
 

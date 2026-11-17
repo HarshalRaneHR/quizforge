@@ -1,5 +1,6 @@
 package com.harshal.quizforge.quiz;
 
+import com.harshal.quizforge.auth.Permission;
 import com.harshal.quizforge.common.PageResponse;
 import com.harshal.quizforge.quiz.QuizDtos.*;
 import jakarta.validation.Valid;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,7 @@ public class QuizController {
 
     @PostMapping("/quizzes/generate")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('quiz:generate')")
     public QuizSummary generate(Authentication auth, @Valid @RequestBody GenerateQuizRequest req) {
         return quizzes.generate(auth.getName(), req);
     }
@@ -39,7 +42,7 @@ public class QuizController {
     @DeleteMapping("/quizzes/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(Authentication auth, @PathVariable Long id) {
-        quizzes.delete(auth.getName(), id, isAdmin(auth));
+        quizzes.delete(auth.getName(), id, canManageAll(auth));
     }
 
     @PostMapping("/quizzes/{id}/attempts")
@@ -54,7 +57,8 @@ public class QuizController {
         return PageResponse.of(attempts.myAttempts(auth.getName(), pageable));
     }
 
-    private static boolean isAdmin(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    private static boolean canManageAll(Authentication auth) {
+        String needed = Permission.QUIZ_MANAGE_ALL.authority();
+        return auth.getAuthorities().stream().anyMatch(a -> needed.equals(a.getAuthority()));
     }
 }

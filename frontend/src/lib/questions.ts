@@ -76,6 +76,21 @@ export const BLUEPRINT_PRESETS: { label: string; counts: Counts }[] = [
 
 export const totalOf = (counts: Counts) => Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
 
+/**
+ * Spreads `total` questions randomly over all types: every type gets one first (as far as the total
+ * allows, picked in random order) so the mix is varied, then the rest land on random types.
+ */
+export function randomCounts(total: number): Counts {
+  const types = QUESTION_TYPES.map(t => t.type).sort(() => Math.random() - 0.5);
+  const counts: Counts = {};
+  for (let i = 0; i < total; i++) {
+    const type = i < types.length ? types[i] : types[Math.floor(Math.random() * types.length)];
+    if ((counts[type] ?? 0) >= MAX_PER_TYPE) { i--; continue; }
+    counts[type] = (counts[type] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export function formatPoints(n: number) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }

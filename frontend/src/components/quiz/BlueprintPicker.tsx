@@ -1,8 +1,8 @@
-import { Minus, Plus } from 'lucide-react';
+import { Dices, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { BLUEPRINT_PRESETS, MAX_PER_TYPE, MAX_QUESTIONS, QUESTION_TYPES, totalOf, type Counts } from '@/lib/questions';
+import { BLUEPRINT_PRESETS, MAX_PER_TYPE, MAX_QUESTIONS, QUESTION_TYPES, randomCounts, totalOf, type Counts } from '@/lib/questions';
 import { cn } from '@/lib/utils';
 import type { Difficulty, QuestionType } from '@/types';
 
@@ -28,6 +28,10 @@ export function BlueprintPicker({ counts, onCountsChange, difficulty, onDifficul
             {BLUEPRINT_PRESETS.map(p => (
               <Button key={p.label} type="button" variant="outline" size="xs" onClick={() => onCountsChange(p.counts)}>{p.label}</Button>
             ))}
+            {/* Keeps the current total (10 if none chosen) and shuffles it across all types. */}
+            <Button type="button" variant="outline" size="xs" onClick={() => onCountsChange(randomCounts(total || 10))}>
+              <Dices /> Random
+            </Button>
           </div>
         </div>
         <ul className="grid gap-2 sm:grid-cols-2">

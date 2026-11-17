@@ -1,5 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
-import type { AuthResponse } from '../types';
+import type { AuthResponse } from '@/types';
 
 export const api = axios.create({ baseURL: '/api' });
 

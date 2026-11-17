@@ -1,20 +1,22 @@
-// Mirrors the backend DTOs.
+// API types are generated from the backend's OpenAPI spec (npm run gen:api → src/api/schema.d.ts),
+// so frontend and backend can't silently drift apart. This file only gives them short names.
+import type { components } from '@/api/schema';
+
+type Schemas = components['schemas'];
+
 export type Role = 'LEARNER' | 'INSTRUCTOR' | 'ADMIN';
-export type AuthResponse = {
-  token: string;
-  expiresInSeconds: number;
-  email: string;
-  role: Role;
-  permissions: string[];
-};
+export const ROLES: Role[] = ['LEARNER', 'INSTRUCTOR', 'ADMIN'];
+
+/** The backend sends role as a string; narrow it to the known values. */
+type WithRole<T> = Omit<T, 'role'> & { role: Role };
+
+export type AuthResponse = WithRole<Schemas['AuthResponse']>;
+export type UserView = WithRole<Schemas['UserView']>;
+
+export type GenerateQuizRequest = Schemas['GenerateQuizRequest'];
+export type QuizSummary = Schemas['QuizSummary'];
+export type QuizDetail = Schemas['QuizDetail'];
+export type AttemptResult = Schemas['AttemptResult'];
+export type AttemptSummary = Schemas['AttemptSummary'];
 
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };
-
-export type GenerateQuizRequest = { title?: string; sourceText: string; questionCount: number };
-export type QuizSummary = { id: number; title: string; questionCount: number; createdAt: string };
-export type QuestionView = { id: number; prompt: string; options: string[] };
-export type QuizDetail = { id: number; title: string; questions: QuestionView[] };
-
-export type QuestionResult = { questionId: number; chosen: number; correct: number; isCorrect: boolean; explanation: string };
-export type AttemptResult = { attemptId: number; score: number; total: number; results: QuestionResult[] };
-export type AttemptSummary = { id: number; quizId: number; quizTitle: string; score: number; total: number; createdAt: string };

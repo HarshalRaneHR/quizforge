@@ -8,14 +8,15 @@ import TakeQuiz from './pages/TakeQuiz';
 import History from './pages/History';
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  const { status } = useAuth();
+  if (status === 'loading') return <p className="center">Loading…</p>;
+  return status === 'authenticated' ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) => `nav-link${isActive ? ' active' : ''}`;
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user, status, logout } = useAuth();
   const queryClient = useQueryClient();
 
   return (
@@ -29,12 +30,15 @@ export default function App() {
             <span className="avatar" aria-hidden="true">{user.email[0]}</span>
             <span className="nav-email">{user.email}</span>
             {/* Clear cached data so the next user never sees the previous user's quizzes */}
-            <button className="btn btn-ghost" onClick={() => { logout(); queryClient.clear(); }}>Log out</button>
+            <button className="btn btn-ghost" onClick={() => logout().finally(() => queryClient.clear())}>Log out</button>
           </div>
         </nav>
       )}
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
+        <Route path="/login" element={
+          status === 'loading' ? <p className="center">Loading…</p>
+            : status === 'authenticated' ? <Navigate to="/" replace /> : <AuthPage />
+        } />
         <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/quiz/:id" element={<RequireAuth><TakeQuiz /></RequireAuth>} />
         <Route path="/history" element={<RequireAuth><History /></RequireAuth>} />

@@ -16,8 +16,12 @@ public final class AuthDtos {
 
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {}
 
-    /** Permissions are sent so the UI can show/hide features; the backend still enforces them. */
-    public record AuthResponse(String token, String email, String role, List<String> permissions) {}
+    /**
+     * Returned by login, register and refresh. {@code token} is the short-lived access token;
+     * the refresh token travels only in the HttpOnly cookie. Permissions let the UI show/hide
+     * features — the backend still enforces them.
+     */
+    public record AuthResponse(String token, long expiresInSeconds, String email, String role, List<String> permissions) {}
 
     public record MeResponse(String email, String role, List<String> permissions) {}
 

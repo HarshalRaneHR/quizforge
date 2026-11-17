@@ -1,30 +1,57 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { api, refreshSession, setSessionExpiredHandler, tokenStore } from '../api/client';
 import type { AuthResponse, Role } from '../types';
 
-type User = { email: string; role: Role } | null;
-type AuthValue = { user: User; login: (r: AuthResponse) => void; logout: () => void };
+type User = { email: string; role: Role; permissions: string[] };
+type Status = 'loading' | 'authenticated' | 'anonymous';
+
+type AuthValue = {
+  user: User | null;
+  status: Status;
+  login: (r: AuthResponse) => void;
+  logout: () => Promise<void>;
+  can: (permission: string) => boolean;
+};
 
 const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [status, setStatus] = useState<Status>('loading');
 
-  const login = (r: AuthResponse) => {
-    const next = { email: r.email, role: r.role };
-    localStorage.setItem('token', r.token);
-    localStorage.setItem('user', JSON.stringify(next));
-    setUser(next);
-  };
+  const login = useCallback((r: AuthResponse) => {
+    tokenStore.set(r.token);
+    setUser({ email: r.email, role: r.role, permissions: r.permissions });
+    setStatus('authenticated');
+  }, []);
 
-  const logout = () => {
-    localStorage.clear();
+  const clearSession = useCallback(() => {
+    tokenStore.set(null);
     setUser(null);
-  };
+    setStatus('anonymous');
+  }, []);
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  useEffect(() => {
+    // v1 stored the token in localStorage; remove it so nothing sensitive lingers there.
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    setSessionExpiredHandler(clearSession);
+    // Restore the session after a page reload using the HttpOnly refresh cookie.
+    refreshSession().then(login).catch(clearSession);
+  }, [login, clearSession]);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout');   // revokes the refresh token on the server + clears the cookie
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
+  const can = useCallback((permission: string) => !!user?.permissions.includes(permission), [user]);
+
+  return <AuthContext.Provider value={{ user, status, login, logout, can }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

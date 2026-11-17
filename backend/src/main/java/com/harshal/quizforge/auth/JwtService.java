@@ -7,29 +7,38 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
+/** Short-lived access tokens. Long sessions come from refresh tokens (RefreshTokenService). */
 @Service
 public class JwtService {
 
     private final SecretKey key;
-    private final long expirationMinutes;
+    private final Duration lifetime;
+    private final Clock clock;
 
     public JwtService(@Value("${app.jwt.secret}") String secret,
-                      @Value("${app.jwt.expiration-minutes}") long expirationMinutes) {
+                      @Value("${app.jwt.access-token-minutes}") long accessTokenMinutes,
+                      Clock clock) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
-        this.expirationMinutes = expirationMinutes;
+        this.lifetime = Duration.ofMinutes(accessTokenMinutes);
+        this.clock = clock;
+    }
+
+    public Duration lifetime() {
+        return lifetime;
     }
 
     public String generate(String email, String role) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         return Jwts.builder()
                 .subject(email)
-                .claim("role", role)
+                .claim("role", role)   // informational only; authorities are loaded from the DB per request
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)))
+                .expiration(Date.from(now.plus(lifetime)))
                 .signWith(key)
                 .compact();
     }

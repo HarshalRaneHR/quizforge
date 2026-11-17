@@ -44,10 +44,12 @@ public class GenerationService {
     private final QuestionTypeRegistry json;
     private final Executor executor;
     private final Clock clock;
+    private final GenerationRateLimiter rateLimiter;
 
     public GenerationService(GenerationJobRepository jobs, UserRepository users, AiQuizGenerator ai, QuizService quizzes,
                              StudioService studio, QuestionTypeRegistry json,
-                             @Qualifier("generationExecutor") Executor executor, Clock clock) {
+                             @Qualifier("generationExecutor") Executor executor, Clock clock, GenerationRateLimiter rateLimiter) {
+        this.rateLimiter = rateLimiter;
         this.jobs = jobs;
         this.users = users;
         this.ai = ai;
@@ -75,6 +77,7 @@ public class GenerationService {
         if (jobs.existsByUserEmailAndStatusIn(user.email(), EnumSet.of(Status.QUEUED, Status.RUNNING))) {
             throw new ConflictException("You already have a quiz being generated. Wait for it to finish.");
         }
+        rateLimiter.acquire(user.email());   // N per hour per user → 429 with Retry-After
         GenerationJob job = new GenerationJob();
         job.setId(UUID.randomUUID());
         job.setUser(users.findByEmail(user.email()).orElseThrow(() -> new NotFoundException("User not found")));

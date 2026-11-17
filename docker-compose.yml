@@ -22,22 +22,34 @@ services:
       DB_PASSWORD: quizforge
       # Ollama runs on your machine, not in Docker; host.docker.internal reaches it from the container.
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEMO_DATA: ${DEMO_DATA:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-demo-password-123}
+      AI_GENERATIONS_PER_HOUR: ${AI_GENERATIONS_PER_HOUR:-10}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      # The JRE image has no curl/wget: ask Spring Boot Actuator via bash's /dev/tcp.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 6
 
   frontend:
     build: ./frontend
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata: {}

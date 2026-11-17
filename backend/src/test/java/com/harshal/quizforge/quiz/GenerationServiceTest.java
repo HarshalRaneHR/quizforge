@@ -61,7 +61,7 @@ class GenerationServiceTest {
         ai = mock(AiQuizGenerator.class);
         quizzes = mock(QuizService.class);
         service = new GenerationService(jobs, users, ai, quizzes, mock(StudioService.class), QuizServiceTest.registry(),
-                Runnable::run, Clock.fixed(Instant.parse("2026-11-17T10:00:00Z"), ZoneOffset.UTC));
+                Runnable::run, Clock.fixed(Instant.parse("2026-11-17T10:00:00Z"), ZoneOffset.UTC), new GenerationRateLimiter(100));
     }
 
     @Test

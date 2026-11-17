@@ -36,6 +36,17 @@ spring:
           model: ${OLLAMA_MODEL}
           temperature: 0.3
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never          # public endpoint: status only, no internals
+      probes:
+        enabled: true              # /actuator/health/liveness and /readiness (Kubernetes-style)
+
 springdoc:
   api-docs:
     enabled: ${API_DOCS_ENABLED:true}
@@ -48,6 +59,11 @@ springdoc:
   default-produces-media-type: application/json
 
 app:
+  ai:
+    generations-per-hour: ${AI_GENERATIONS_PER_HOUR:10}
+  demo:
+    enabled: ${DEMO_DATA:false}         # seed demo instructor/learner/quiz/classroom on startup
+    password: ${DEMO_PASSWORD:demo-password-123}
   jwt:
     secret: ${JWT_SECRET}
     access-token-minutes: 15        # short-lived; kept only in browser memory

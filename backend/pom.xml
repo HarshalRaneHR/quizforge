@@ -82,6 +82,17 @@
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-ollama</artifactId>
 		</dependency>
+		<!-- Health checks (/actuator/health) and metrics -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<!-- Token-bucket rate limiting for the (expensive) AI generation endpoints -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.22.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -111,6 +122,22 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Integration tests against a real PostgreSQL in Docker (versions managed by Spring Boot) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

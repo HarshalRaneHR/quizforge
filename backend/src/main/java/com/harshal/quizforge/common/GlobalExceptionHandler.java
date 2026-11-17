@@ -29,6 +29,13 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> tooManyRequests(TooManyRequestsException e) {
+        return org.springframework.http.ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage()));
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     ProblemDetail forbidden(ForbiddenException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());

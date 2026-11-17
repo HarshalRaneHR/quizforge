@@ -103,7 +103,7 @@
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.68 0.18 285);
-    --chart-1: oklch(0.68 0.18 285);
+    --chart-1: oklch(0.64 0.19 285);   /* validated: inside the dark chart lightness band, >=3:1 on the card */
     --chart-2: oklch(0.72 0.14 200);
     --chart-3: oklch(0.76 0.15 150);
     --chart-4: oklch(0.8 0.14 75);

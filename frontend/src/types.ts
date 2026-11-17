@@ -39,5 +39,8 @@ export type AssignmentView = Schemas['AssignmentView'];
 export type MyAssignment = Schemas['MyAssignment'];
 export type Gradebook = Schemas['Gradebook'];
 export type Progress = MyAssignment['progress'];
+export type MyAnalytics = Schemas['MyAnalytics'];
+export type QuizAnalytics = Schemas['QuizAnalytics'];
+export type PlatformStats = Schemas['PlatformStats'];
 
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };

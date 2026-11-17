@@ -555,6 +555,26 @@ export interface paths {
         patch: operations["changeRole"];
         trace?: never;
     };
+    "/api/studio/quizzes/{id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How learners did on one of my quizzes
+         * @description Score distribution, pass rate and per-question difficulty with the most common wrong answer. Excludes your own previews.
+         */
+        get: operations["quiz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quizzes": {
         parameters: {
             query?: never;
@@ -756,6 +776,40 @@ export interface paths {
          * @description Across all my classrooms, soonest due first, with my progress.
          */
         get: operations["myAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My progress: averages, streak, score trend, accuracy by question type */
+        get: operations["mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform statistics (admin) */
+        get: operations["platform"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1098,6 +1152,50 @@ export interface components {
             /** @enum {string} */
             role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
         };
+        Bucket: {
+            label: string;
+            /** Format: int32 */
+            from: number;
+            /** Format: int32 */
+            to: number;
+            /** Format: int64 */
+            count: number;
+        };
+        QuestionStat: {
+            /** Format: int64 */
+            questionId: number;
+            /** Format: int32 */
+            position: number;
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            prompt: string;
+            /** Format: int64 */
+            answered: number;
+            /** Format: int32 */
+            averagePercentage: number;
+            /** Format: int32 */
+            fullyCorrectPercentage: number;
+            commonWrongAnswer: string;
+            /** Format: int64 */
+            commonWrongCount: number;
+        };
+        QuizAnalytics: {
+            /** Format: int64 */
+            quizId: number;
+            title: string;
+            /** Format: int32 */
+            attempts: number;
+            /** Format: int32 */
+            learners: number;
+            /** Format: int32 */
+            averagePercentage: number;
+            /** Format: int32 */
+            passPercentage: number;
+            /** Format: int32 */
+            passRatePercentage: number;
+            distribution: components["schemas"]["Bucket"][];
+            questions: components["schemas"]["QuestionStat"][];
+        };
         PageResponseQuizSummary: {
             content: components["schemas"]["QuizSummary"][];
             /** Format: int32 */
@@ -1265,6 +1363,39 @@ export interface components {
             /** Format: int32 */
             attempts: number;
         };
+        MyAnalytics: {
+            /** Format: int32 */
+            attempts: number;
+            /** Format: int32 */
+            quizzesTaken: number;
+            /** Format: int32 */
+            averagePercentage: number;
+            /** Format: int32 */
+            bestPercentage: number;
+            /** Format: int32 */
+            streakDays: number;
+            trend: components["schemas"]["TrendPoint"][];
+            byType: components["schemas"]["TypeStat"][];
+            /** @enum {string} */
+            weakestType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+        };
+        TrendPoint: {
+            /** Format: int64 */
+            attemptId: number;
+            quizTitle: string;
+            /** Format: date-time */
+            submittedAt: string;
+            /** Format: int32 */
+            percentage: number;
+        };
+        TypeStat: {
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            /** Format: int64 */
+            answered: number;
+            /** Format: int32 */
+            accuracyPercentage: number;
+        };
         PageResponseUserView: {
             content: components["schemas"]["UserView"][];
             /** Format: int32 */
@@ -1275,6 +1406,34 @@ export interface components {
             totalElements: number;
             /** Format: int32 */
             totalPages: number;
+        };
+        DayCount: {
+            /** Format: date */
+            day: string;
+            /** Format: int64 */
+            count: number;
+        };
+        PlatformStats: {
+            usersByRole: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            totalUsers: number;
+            /** Format: int64 */
+            publishedQuizzes: number;
+            /** Format: int64 */
+            draftQuizzes: number;
+            /** Format: int64 */
+            practiceQuizzes: number;
+            /** Format: int64 */
+            submittedAttempts: number;
+            /** Format: int64 */
+            classrooms: number;
+            /** Format: int64 */
+            generationSucceeded: number;
+            /** Format: int64 */
+            generationFailed: number;
+            attemptsLast14Days: components["schemas"]["DayCount"][];
         };
     };
     responses: never;
@@ -2387,6 +2546,28 @@ export interface operations {
             };
         };
     };
+    quiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizAnalytics"];
+                };
+            };
+        };
+    };
     list: {
         parameters: {
             query?: {
@@ -2671,6 +2852,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyAssignment"][];
+                };
+            };
+        };
+    };
+    mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAnalytics"];
+                };
+            };
+        };
+    };
+    platform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStats"];
                 };
             };
         };

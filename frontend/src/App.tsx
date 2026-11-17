@@ -14,6 +14,7 @@ const ReviewAttemptPage = lazy(() => import('@/pages/ReviewAttemptPage'));
 const StudioPage = lazy(() => import('@/pages/studio/StudioPage'));
 const QuizBuilderPage = lazy(() => import('@/pages/studio/QuizBuilderPage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
+const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'));
 const ClassesPage = lazy(() => import('@/pages/ClassesPage'));
 const ClassroomsPage = lazy(() => import('@/pages/classrooms/ClassroomsPage'));
 const ClassroomDetailPage = lazy(() => import('@/pages/classrooms/ClassroomDetailPage'));
@@ -43,6 +44,9 @@ export default function App() {
           } />
           <Route path="classrooms/:id" element={
             <RequirePermission permission={PERMISSIONS.CLASSROOM_MANAGE}><ClassroomDetailPage /></RequirePermission>
+          } />
+          <Route path="admin" element={
+            <RequirePermission permission={PERMISSIONS.USER_READ}><AdminOverviewPage /></RequirePermission>
           } />
           <Route path="admin/users" element={
             <RequirePermission permission={PERMISSIONS.USER_READ}><UsersPage /></RequirePermission>

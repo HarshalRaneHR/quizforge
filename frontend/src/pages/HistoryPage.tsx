@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ChartLine, ListChecks, Play, Target, Trophy, type LucideIcon } from 'lucide-react';
+import { ChartLine, Flame, ListChecks, Play, Target, Trophy } from 'lucide-react';
+import { HorizontalBars, TrendChart } from '@/components/charts/Charts';
+import { StatTile } from '@/components/app/StatTile';
 import { api, errorMessage } from '@/api/client';
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Pagination } from '@/components/app/Pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatPoints } from '@/lib/questions';
+import { formatPoints, TYPE_LABEL } from '@/lib/questions';
 import { cn } from '@/lib/utils';
-import type { AttemptSummary, Page } from '@/types';
+import type { AttemptSummary, MyAnalytics, Page } from '@/types';
 
 const percent = (a: AttemptSummary) => a.percentage;
 
@@ -23,22 +25,53 @@ function scoreClass(pct: number) {
   return 'border-red-500/25 bg-red-500/10 text-red-700 dark:text-red-300';
 }
 
-function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+/** All-time stats and charts (from /analytics/me, not just the current page of the table). */
+function Insights({ data }: { data: MyAnalytics }) {
+  const trend = data.trend.map((t, i) => ({
+    label: new Date(t.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    value: t.percentage,
+    detail: `#${i + 1} · ${t.quizTitle}`,
+  }));
+  const byType = data.byType.map(t => ({ label: TYPE_LABEL[t.type], value: t.accuracyPercentage, detail: `${t.answered} answered` }));
   return (
-    <Card className="py-5">
-      <CardContent className="flex items-center gap-4">
-        <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-5" aria-hidden="true" /></span>
-        <div>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
+    <>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile icon={ListChecks} label="Quizzes completed" value={String(data.attempts)} hint={`${data.quizzesTaken} different quizzes`} />
+        <StatTile icon={Target} label="Average score" value={data.averagePercentage === null || data.averagePercentage === undefined ? '—' : `${data.averagePercentage}%`} />
+        <StatTile icon={Trophy} label="Best score" value={data.bestPercentage === null || data.bestPercentage === undefined ? '—' : `${data.bestPercentage}%`} />
+        <StatTile icon={Flame} label="Day streak" value={String(data.streakDays)} hint={data.streakDays > 0 ? 'Keep it going!' : 'Take a quiz today'} />
+      </div>
+      {data.attempts > 0 && (
+        <div className="mb-6 grid gap-4 lg:grid-cols-5">
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Score trend</CardTitle>
+              <CardDescription>Your last {trend.length} submitted attempts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TrendChart data={trend} ariaLabel={`Score trend over your last ${trend.length} attempts: ${trend.map(t => `${t.value}%`).join(', ')}`} />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Accuracy by question type</CardTitle>
+              <CardDescription>
+                {data.weakestType ? <>Focus area: <span className="font-medium text-foreground">{TYPE_LABEL[data.weakestType]}</span></> : 'Share of points earned per type'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <HorizontalBars data={byType} ariaLabel={`Accuracy by question type: ${byType.map(b => `${b.label} ${b.value}%`).join(', ')}`} />
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </>
   );
 }
 
 export default function HistoryPage() {
   const [page, setPage] = useState(0);
+  const analytics = useQuery({ queryKey: ['attempts', 'analytics'], queryFn: () => api.get<MyAnalytics>('/analytics/me').then(r => r.data) });
   const attempts = useQuery({
     queryKey: ['attempts', page],
     queryFn: () => api.get<Page<AttemptSummary>>('/attempts/me', { params: { page, size: 10 } }).then(r => r.data),
@@ -63,19 +96,11 @@ export default function HistoryPage() {
     );
   }
 
-  const pageNote = attempts.data.totalPages > 1 ? ' (this page)' : '';
-  const finished = rows.filter(a => a.status === 'SUBMITTED');   // open attempts have no score yet
-  const avg = finished.length ? Math.round(finished.reduce((sum, a) => sum + percent(a), 0) / finished.length) : 0;
-  const best = finished.length ? Math.max(...finished.map(percent)) : 0;
-
   return (
     <>
       {header}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Stat icon={ListChecks} label="Total attempts" value={String(attempts.data.totalElements)} />
-        <Stat icon={Target} label={`Average score${pageNote}`} value={`${avg}%`} />
-        <Stat icon={Trophy} label={`Best score${pageNote}`} value={`${best}%`} />
-      </div>
+      {analytics.data ? <Insights data={analytics.data} /> : <Skeleton className="mb-6 h-24 rounded-xl" />}
+      <h2 className="mb-3 text-lg font-semibold">All attempts</h2>
 
       <Card className={cn('py-0', attempts.isPlaceholderData && 'opacity-60')}>
         <Table>

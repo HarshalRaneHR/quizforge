@@ -1,4 +1,4 @@
-import { ChartLine, Compass, House, PencilRuler, School, UsersRound, Users, type LucideIcon } from 'lucide-react';
+import { ChartLine, Compass, Gauge, House, PencilRuler, School, UsersRound, Users, type LucideIcon } from 'lucide-react';
 import { PERMISSIONS, type Permission } from '@/lib/permissions';
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; permission?: Permission };
@@ -24,7 +24,10 @@ export const NAV: NavSection[] = [
   },
   {
     label: 'Administration',
-    items: [{ to: '/admin/users', label: 'Users', icon: Users, permission: PERMISSIONS.USER_READ }],
+    items: [
+      { to: '/admin', label: 'Overview', icon: Gauge, end: true, permission: PERMISSIONS.USER_READ },
+      { to: '/admin/users', label: 'Users', icon: Users, permission: PERMISSIONS.USER_READ },
+    ],
   },
 ];
 

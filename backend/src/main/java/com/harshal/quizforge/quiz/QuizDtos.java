@@ -2,6 +2,7 @@ package com.harshal.quizforge.quiz;
 
 import com.harshal.quizforge.question.Difficulty;
 import com.harshal.quizforge.question.QuestionType;
+import com.harshal.quizforge.quiz.QuizSettings.ResultsVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -12,6 +13,8 @@ import java.util.Map;
 
 public final class QuizDtos {
     private QuizDtos() {}
+
+    // ---------------------------------------------------------------- generation
 
     /** How many questions of each type to generate, and how hard. */
     public record Blueprint(
@@ -24,6 +27,36 @@ public final class QuizDtos {
             @NotBlank @Size(min = 200, max = 20000, message = "must be 200-20000 characters") String sourceText,
             @NotNull @Valid Blueprint blueprint) {}
 
+    // ---------------------------------------------------------------- quizzes
+
+    /** How a quiz is taken. Null limits = unlimited; omitted switches = off; omitted visibility = FULL. */
+    public record Settings(
+            @Min(1) @Max(100) Integer maxAttempts,
+            @Min(1) @Max(100) Integer passPercentage,
+            Boolean shuffleQuestions,
+            Boolean shuffleOptions,
+            ResultsVisibility resultsVisibility) {
+
+        public Settings {
+            shuffleQuestions = Boolean.TRUE.equals(shuffleQuestions);
+            shuffleOptions = Boolean.TRUE.equals(shuffleOptions);
+            if (resultsVisibility == null) resultsVisibility = ResultsVisibility.FULL;
+        }
+
+        static Settings of(QuizSettings s) {
+            return new Settings(s.getMaxAttempts(), s.getPassPercentage(),
+                    s.isShuffleQuestions(), s.isShuffleOptions(), s.getResultsVisibility());
+        }
+
+        void applyTo(QuizSettings s) {
+            s.setMaxAttempts(maxAttempts);
+            s.setPassPercentage(passPercentage);
+            s.setShuffleQuestions(shuffleQuestions);
+            s.setShuffleOptions(shuffleOptions);
+            s.setResultsVisibility(resultsVisibility);
+        }
+    }
+
     public record QuizSummary(Long id, String title, QuizStatus status, Visibility visibility, int questionCount,
                               int totalPoints, Instant createdAt, Instant updatedAt) {}
 
@@ -32,28 +65,50 @@ public final class QuizDtos {
                               int totalPoints, Instant publishedAt) {}
 
     /**
-     * Sent to the browser while taking a quiz — deliberately has NO answer key.
-     * {@code content} depends on {@code type} (options, items, left/right lists…).
+     * Quiz landing page: everything except the questions — those are only sent once an attempt starts
+     * (and counts towards the attempt limit).
      */
-    public record QuestionView(Long id, QuestionType type, Difficulty difficulty, int points, String prompt,
-                               Map<String, Object> content) {}
-
     public record QuizDetail(Long id, String title, String description, QuizStatus status, String author,
-                             int totalPoints, List<QuestionView> questions) {}
+                             int questionCount, int totalPoints, Settings settings,
+                             int attemptsUsed, Integer attemptsLeft, Long openAttemptId, boolean canAuthor) {}
 
-    /** {@code response} shape depends on the question type; missing = unanswered. */
-    public record AnswerSubmission(@NotNull Long questionId, Map<String, Object> response) {}
+    // ---------------------------------------------------------------- attempts
 
-    public record SubmitAttemptRequest(@NotNull @Valid List<@NotNull AnswerSubmission> answers) {}
+    /**
+     * A question as shown in an attempt. {@code optionOrder} (choice questions with option shuffling)
+     * is the display order of option indexes; responses always use the original indexes.
+     */
+    public record SessionQuestion(Long id, QuestionType type, Difficulty difficulty, int points, String prompt,
+                                  Map<String, Object> content, List<Integer> optionOrder) {}
 
-    public record QuestionResult(Long questionId, QuestionType type, double pointsAwarded, double maxPoints,
-                                 boolean correct, Map<String, Object> response, Map<String, Object> correctAnswer,
-                                 String explanation) {}
+    public record SavedAnswer(Long questionId, Map<String, Object> response, boolean flagged) {}
 
-    public record AttemptResult(Long attemptId, double score, double maxScore, int percentage, List<QuestionResult> results) {}
+    /** An open attempt: questions in this attempt's order and the answers saved so far (for resuming). */
+    public record AttemptSession(Long attemptId, Long quizId, String title, int totalPoints, Instant startedAt,
+                                 List<SessionQuestion> questions, List<SavedAnswer> answers) {}
 
-    public record AttemptSummary(Long id, Long quizId, String quizTitle, double score, double maxScore, int percentage,
-                                 Instant createdAt) {}
+    /**
+     * {@code response} shape depends on the question type; null/empty = unanswered.
+     * {@code flagged} is optional (boxed: omitting it means false, it isn't a parse error).
+     */
+    public record SaveAnswerRequest(Map<String, Object> response, Boolean flagged) {
+        public boolean isFlagged() {
+            return Boolean.TRUE.equals(flagged);
+        }
+    }
+
+    public record SaveAnswerResult(Instant savedAt) {}
+
+    public record QuestionResult(SessionQuestion question, double pointsAwarded, double maxPoints, boolean correct,
+                                 Map<String, Object> response, Map<String, Object> correctAnswer, String explanation) {}
+
+    /** {@code detailsHidden}: the quiz shows learners their score only (results list is empty). */
+    public record AttemptResult(Long attemptId, Long quizId, String quizTitle, Attempt.Status status, double score,
+                                double maxScore, int percentage, Boolean passed, Integer passPercentage,
+                                boolean detailsHidden, Instant startedAt, Instant submittedAt, List<QuestionResult> results) {}
+
+    public record AttemptSummary(Long id, Long quizId, String quizTitle, Attempt.Status status, double score,
+                                 double maxScore, int percentage, Boolean passed, Instant createdAt) {}
 
     static int percentage(double score, double maxScore) {
         return maxScore <= 0 ? 0 : (int) Math.round(score * 100.0 / maxScore);

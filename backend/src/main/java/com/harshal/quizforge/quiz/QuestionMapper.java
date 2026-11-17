@@ -2,9 +2,11 @@ package com.harshal.quizforge.quiz;
 
 import com.harshal.quizforge.question.QuestionDraft;
 import com.harshal.quizforge.question.QuestionTypeRegistry;
-import com.harshal.quizforge.quiz.QuizDtos.QuestionView;
+import com.harshal.quizforge.quiz.QuizDtos.SessionQuestion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /** Converts between question drafts, JPA entities and API views. */
 @Component
@@ -44,8 +46,8 @@ public class QuestionMapper {
     }
 
     /** Learner-safe view: content only, never the answer key. */
-    public QuestionView toView(Question q) {
-        return new QuestionView(q.getId(), q.getType(), q.getDifficulty(), q.getPoints(), q.getPrompt(),
-                registry.toMap(q.getContentJson()));
+    public SessionQuestion toSessionQuestion(Question q, List<Integer> optionOrder) {
+        return new SessionQuestion(q.getId(), q.getType(), q.getDifficulty(), q.getPoints(), q.getPrompt(),
+                registry.toMap(q.getContentJson()), optionOrder);
     }
 }

@@ -65,6 +65,15 @@ public class StudioService {
         return view(quiz);
     }
 
+    /** Attempt limit, pass mark, shuffling, results visibility. Draft only: rules don't change under learners. */
+    @Transactional
+    public StudioQuiz updateSettings(CurrentUser user, Long id, QuizDtos.Settings settings) {
+        Quiz quiz = draft(user, id);
+        settings.applyTo(quiz.getSettings());
+        quiz.setUpdatedAt(Instant.now());
+        return view(quiz);
+    }
+
     // ---------------------------------------------------------------- questions (DRAFT only)
 
     @Transactional
@@ -160,6 +169,7 @@ public class StudioService {
         String title = "Copy of " + source.getTitle();
         copy.setTitle(title.length() > 120 ? title.substring(0, 120) : title);
         copy.setDescription(source.getDescription());
+        copy.setSettings(source.getSettings().copy());
         copy.setOwner(owner);
         copy.setVisibility(Visibility.PUBLIC);
         copy.setStatus(QuizStatus.DRAFT);
@@ -203,6 +213,6 @@ public class StudioService {
                 .toList();
         return new StudioQuiz(q.getId(), q.getTitle(), q.getDescription(), q.getStatus(), q.getVisibility(),
                 q.getQuestionCount(), q.getTotalPoints(), q.getCreatedAt(), q.getUpdatedAt(), q.getPublishedAt(),
-                q.getId() != null && hasLearnerAttempts(q), qs);
+                q.getId() != null && hasLearnerAttempts(q), QuizDtos.Settings.of(q.getSettings()), qs);
     }
 }

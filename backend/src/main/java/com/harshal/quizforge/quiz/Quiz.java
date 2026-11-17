@@ -36,6 +36,9 @@ public class Quiz {
     @Column(nullable = false, length = 20)
     private Visibility visibility = Visibility.PRIVATE;
 
+    @Embedded
+    private QuizSettings settings = new QuizSettings();
+
     // Stored so list pages don't load every question (avoids N+1).
     private int questionCount;
 

@@ -10,12 +10,15 @@ import {
   BLANK, type ChoiceContent, type MatchingContent, type NumericContent, type OrderingContent, type Response,
 } from '@/lib/questions';
 import { cn } from '@/lib/utils';
-import type { QuestionResult, QuestionView } from '@/types';
+import type { QuestionResult, SessionQuestion } from '@/types';
 
 const LETTERS = 'ABCDEFGH';
 
+/** Display order of option indexes for this attempt (shuffled per attempt, or the stored order). */
+const displayOrder = (q: SessionQuestion, count: number) => q.optionOrder ?? Array.from({ length: count }, (_, i) => i);
+
 type Props = {
-  question: QuestionView;
+  question: SessionQuestion;
   response: Response | undefined;
   onChange: (response: Response) => void;
   result?: QuestionResult;   // present after grading → read-only with feedback
@@ -64,12 +67,13 @@ function SingleChoice({ question, response, onChange, result }: Props) {
   return (
     <RadioGroup aria-labelledby={`q-${question.id}-prompt`} disabled={!!result}
                 value={selected === undefined ? '' : String(selected)} onValueChange={v => onChange({ selected: Number(v) })}>
-      {options.map((option, j) => {
+      {/* j = original option index (what the server grades); pos = where it's shown */}
+      {displayOrder(question, options.length).map((j, pos) => {
         const mark: Mark = !result ? 'idle' : j === correct ? 'correct' : j === selected ? 'wrong' : 'idle';
         const id = `q-${question.id}-o-${j}`;
         return (
-          <OptionRow key={j} id={id} letter={LETTERS[j]} mark={mark} interactive={!result}
-                     control={<RadioGroupItem value={String(j)} id={id} />}>{option}</OptionRow>
+          <OptionRow key={j} id={id} letter={LETTERS[pos]} mark={mark} interactive={!result}
+                     control={<RadioGroupItem value={String(j)} id={id} />}>{options[j]}</OptionRow>
         );
       })}
     </RadioGroup>
@@ -85,15 +89,15 @@ function MultipleChoice({ question, response, onChange, result }: Props) {
   return (
     <div role="group" aria-labelledby={`q-${question.id}-prompt`} className="grid gap-3">
       <p className="text-sm text-muted-foreground">Select all that apply.</p>
-      {options.map((option, j) => {
+      {displayOrder(question, options.length).map((j, pos) => {
         const isCorrect = correct.includes(j);
         const picked = selected.includes(j);
         const mark: Mark = !result ? 'idle' : isCorrect ? 'correct' : picked ? 'wrong' : 'idle';
         const id = `q-${question.id}-o-${j}`;
         return (
-          <OptionRow key={j} id={id} letter={LETTERS[j]} mark={mark} interactive={!result}
+          <OptionRow key={j} id={id} letter={LETTERS[pos]} mark={mark} interactive={!result}
                      control={<Checkbox id={id} checked={picked} disabled={!!result} onCheckedChange={c => toggle(j, c === true)} />}>
-            {option}
+            {options[j]}
             {result && isCorrect && !picked && <span className="ml-2 text-xs text-muted-foreground">(you missed this)</span>}
           </OptionRow>
         );

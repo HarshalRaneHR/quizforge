@@ -78,12 +78,24 @@ public class QuizService {
                         q.getQuestionCount(), q.getTotalPoints(), q.getPublishedAt()));
     }
 
+    /** Landing page before starting: settings and my attempts so far (no questions). */
     @Transactional(readOnly = true)
-    public QuizDetail getForTaking(CurrentUser user, Long id) {
+    public QuizDetail getOverview(CurrentUser user, Long id) {
         Quiz quiz = getTakeable(user, id);
-        List<QuestionView> views = quiz.getQuestions().stream().map(questions::toView).toList();
+        long used = attemptRepo.countByQuizIdAndUserEmailAndStatus(id, user.email(), Attempt.Status.SUBMITTED);
+        Long openId = attemptRepo.findFirstByQuizIdAndUserEmailAndStatus(id, user.email(), Attempt.Status.IN_PROGRESS)
+                .map(Attempt::getId).orElse(null);
         return new QuizDetail(quiz.getId(), quiz.getTitle(), quiz.getDescription(), quiz.getStatus(),
-                quiz.getOwner().getEmail(), quiz.getTotalPoints(), views);
+                quiz.getOwner().getEmail(), quiz.getQuestionCount(), quiz.getTotalPoints(), Settings.of(quiz.getSettings()),
+                (int) used, attemptsLeft(user, quiz), openId, QuizPolicy.canAuthor(quiz, user));
+    }
+
+    /** Remaining attempts; null = unlimited. Authors previewing their own quiz are never limited. */
+    Integer attemptsLeft(CurrentUser user, Quiz quiz) {
+        Integer max = quiz.getSettings().getMaxAttempts();
+        if (max == null || QuizPolicy.canAuthor(quiz, user)) return null;
+        long used = attemptRepo.countByQuizIdAndUserEmailAndStatus(quiz.getId(), user.email(), Attempt.Status.SUBMITTED);
+        return (int) Math.max(0, max - used);
     }
 
     @Transactional

@@ -29,6 +29,7 @@ import { isFinished, useGenerationJob } from '@/hooks/use-generation-job';
 import { QUESTION_TYPES, TYPE_ICON, TYPE_LABEL } from '@/lib/questions';
 import type { AuthoringQuestionView, JobView, QuestionType, StudioQuiz } from '@/types';
 import { QuestionEditorDialog } from './QuestionEditorDialog';
+import { SettingsCard } from './SettingsCard';
 
 type Editor = { editing?: AuthoringQuestionView; type?: QuestionType } | null;
 
@@ -249,6 +250,8 @@ export default function QuizBuilderPage() {
       )}
 
       {isDraft && <DetailsCard key={q.updatedAt} quiz={q} onSaved={setQuiz} />}
+
+      <SettingsCard key={`settings-${q.updatedAt}`} quiz={q} editable={isDraft} onSaved={setQuiz} />
 
       <Card>
         <CardHeader>

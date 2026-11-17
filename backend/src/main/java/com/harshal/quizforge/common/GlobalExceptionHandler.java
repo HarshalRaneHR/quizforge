@@ -34,6 +34,12 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
+    /** A database constraint caught a race (e.g. double "Start", two saves of one answer at once). */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ProblemDetail dataConflict() {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "That change conflicted with another one. Please try again.");
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     ProblemDetail badCredentials() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password");

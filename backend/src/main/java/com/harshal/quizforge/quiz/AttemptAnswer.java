@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnTransformer;
 
+import java.time.Instant;
+
 /** One graded answer inside an attempt — kept for reviews and per-question analytics. */
 @Entity
 @Getter @Setter @NoArgsConstructor
@@ -31,4 +33,9 @@ public class AttemptAnswer {
     private double maxPoints;
 
     private boolean correct;
+
+    /** "Flag for review" while taking the quiz. */
+    private boolean flagged;
+
+    private Instant updatedAt;
 }

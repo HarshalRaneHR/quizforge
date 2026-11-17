@@ -52,7 +52,7 @@ public final class StudioDtos {
 
     public record StudioQuiz(Long id, String title, String description, QuizStatus status, Visibility visibility,
                              int questionCount, int totalPoints, Instant createdAt, Instant updatedAt, Instant publishedAt,
-                             boolean hasLearnerAttempts, List<AuthoringQuestionView> questions) {}
+                             boolean hasLearnerAttempts, QuizDtos.Settings settings, List<AuthoringQuestionView> questions) {}
 
     public record ReorderRequest(@NotEmpty List<@NotNull Long> questionIds) {}
 

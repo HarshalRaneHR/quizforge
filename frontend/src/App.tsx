@@ -10,6 +10,7 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ExplorePage = lazy(() => import('@/pages/ExplorePage'));
 const TakeQuizPage = lazy(() => import('@/pages/TakeQuizPage'));
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'));
+const ReviewAttemptPage = lazy(() => import('@/pages/ReviewAttemptPage'));
 const StudioPage = lazy(() => import('@/pages/studio/StudioPage'));
 const QuizBuilderPage = lazy(() => import('@/pages/studio/QuizBuilderPage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="explore" element={<ExplorePage />} />
           <Route path="quiz/:id" element={<TakeQuizPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="attempts/:id" element={<ReviewAttemptPage />} />
           <Route path="studio" element={
             <RequirePermission permission={PERMISSIONS.QUIZ_AUTHOR}><StudioPage /></RequirePermission>
           } />

@@ -45,6 +45,14 @@ public class StudioController {
         return studio.update(CurrentUser.of(auth), id, req);
     }
 
+    @Operation(summary = "Update how the quiz is taken (draft only)",
+            description = "Max attempts, pass mark, shuffle questions/options, and whether learners see full results or the score only.")
+    @PutMapping("/{id}/settings")
+    public StudioQuiz updateSettings(@Parameter(hidden = true) Authentication auth, @PathVariable Long id,
+                                     @Valid @RequestBody QuizDtos.Settings settings) {
+        return studio.updateSettings(CurrentUser.of(auth), id, settings);
+    }
+
     @Operation(summary = "Generate questions with AI and add them to this draft",
             description = "Background job; poll GET /api/generation-jobs/{id}.")
     @PostMapping("/{id}/generate")

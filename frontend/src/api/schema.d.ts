@@ -25,6 +25,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/quizzes/{id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update how the quiz is taken (draft only)
+         * @description Max attempts, pass mark, shuffle questions/options, and whether learners see full results or the score only.
+         */
+        put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/quizzes/{id}/questions/{questionId}": {
         parameters: {
             query?: never;
@@ -56,6 +76,26 @@ export interface paths {
          * @description questionIds = every question id in the new order.
          */
         put: operations["reorder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attempts/{attemptId}/answers/{questionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Autosave one answer
+         * @description Response shape by type: SINGLE_CHOICE {selected}, MULTIPLE_CHOICE {selected:[...]}, TRUE_FALSE {value}, FILL_BLANK {values:[...]}, NUMERIC {value}, ORDERING {order:[...]}, MATCHING {pairs:[...]}. Choice indexes are the ORIGINAL option indexes (not the shuffled display order).
+         */
+        put: operations["save"];
         post?: never;
         delete?: never;
         options?: never;
@@ -217,7 +257,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/quizzes/{id}/attempts": {
+    "/api/quizzes/{quizId}/attempts": {
         parameters: {
             query?: never;
             header?: never;
@@ -227,10 +267,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Submit answers and get graded results
-         * @description One entry per question: {questionId, response}. Response shape by type: SINGLE_CHOICE {selected}, MULTIPLE_CHOICE {selected:[...]}, TRUE_FALSE {value}, FILL_BLANK {values:[...]}, NUMERIC {value}, ORDERING {order:[...]}, MATCHING {pairs:[...]}. Missing answers score 0; partial credit applies to multi-select, fill-blank, ordering and matching.
+         * Start an attempt (or resume the open one)
+         * @description Returns the questions in this attempt's order plus any answers already saved.
          */
-        post: operations["submit"];
+        post: operations["start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -337,6 +377,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attempts/{attemptId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit: grade the saved answers
+         * @description Idempotent: submitting again returns the same result.
+         */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -409,8 +469,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get a quiz to take
-         * @description Correct answers are never included.
+         * Quiz landing page
+         * @description Title, settings and your attempts so far. Questions are only returned by starting an attempt.
          */
         get: operations["get_1"];
         put?: never;
@@ -482,6 +542,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attempts/{attemptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review a finished attempt
+         * @description Per-question results are omitted when the quiz shows learners their score only.
+         */
+        get: operations["get_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/attempts/me": {
         parameters: {
             query?: never;
@@ -539,6 +619,16 @@ export interface components {
             left: string;
             right: string;
         };
+        Settings: {
+            /** Format: int32 */
+            maxAttempts: number;
+            /** Format: int32 */
+            passPercentage: number;
+            shuffleQuestions: boolean;
+            shuffleOptions: boolean;
+            /** @enum {string} */
+            resultsVisibility: "FULL" | "SCORE_ONLY";
+        };
         StudioQuiz: {
             /** Format: int64 */
             id: number;
@@ -559,10 +649,21 @@ export interface components {
             /** Format: date-time */
             publishedAt: string;
             hasLearnerAttempts: boolean;
+            settings: components["schemas"]["Settings"];
             questions: components["schemas"]["AuthoringQuestionView"][];
         };
         ReorderRequest: {
             questionIds: number[];
+        };
+        SaveAnswerRequest: {
+            response: {
+                [key: string]: unknown;
+            };
+            flagged: boolean;
+        };
+        SaveAnswerResult: {
+            /** Format: date-time */
+            savedAt: string;
         };
         CreateQuizRequest: {
             title: string;
@@ -603,44 +704,41 @@ export interface components {
             quizId: number;
             error: string;
         };
-        AnswerSubmission: {
-            /** Format: int64 */
-            questionId: number;
-            response?: {
-                [key: string]: unknown;
-            };
-        };
-        SubmitAttemptRequest: {
-            answers: components["schemas"]["AnswerSubmission"][];
-        };
-        AttemptResult: {
+        AttemptSession: {
             /** Format: int64 */
             attemptId: number;
-            /** Format: double */
-            score: number;
-            /** Format: double */
-            maxScore: number;
+            /** Format: int64 */
+            quizId: number;
+            title: string;
             /** Format: int32 */
-            percentage: number;
-            results: components["schemas"]["QuestionResult"][];
+            totalPoints: number;
+            /** Format: date-time */
+            startedAt: string;
+            questions: components["schemas"]["SessionQuestion"][];
+            answers: components["schemas"]["SavedAnswer"][];
         };
-        QuestionResult: {
+        SavedAnswer: {
             /** Format: int64 */
             questionId: number;
-            /** @enum {string} */
-            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
-            /** Format: double */
-            pointsAwarded: number;
-            /** Format: double */
-            maxPoints: number;
-            correct: boolean;
             response: {
                 [key: string]: unknown;
             };
-            correctAnswer: {
+            flagged: boolean;
+        };
+        SessionQuestion: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            /** @enum {string} */
+            difficulty: "EASY" | "MEDIUM" | "HARD";
+            /** Format: int32 */
+            points: number;
+            prompt: string;
+            content: {
                 [key: string]: unknown;
             };
-            explanation: string;
+            optionOrder: number[];
         };
         GenerateQuizRequest: {
             title?: string;
@@ -676,6 +774,45 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+        };
+        AttemptResult: {
+            /** Format: int64 */
+            attemptId: number;
+            /** Format: int64 */
+            quizId: number;
+            quizTitle: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "SUBMITTED";
+            /** Format: double */
+            score: number;
+            /** Format: double */
+            maxScore: number;
+            /** Format: int32 */
+            percentage: number;
+            passed: boolean;
+            /** Format: int32 */
+            passPercentage: number;
+            detailsHidden: boolean;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            submittedAt: string;
+            results: components["schemas"]["QuestionResult"][];
+        };
+        QuestionResult: {
+            question: components["schemas"]["SessionQuestion"];
+            /** Format: double */
+            pointsAwarded: number;
+            /** Format: double */
+            maxPoints: number;
+            correct: boolean;
+            response: {
+                [key: string]: unknown;
+            };
+            correctAnswer: {
+                [key: string]: unknown;
+            };
+            explanation: string;
         };
         CreateUserRequest: {
             /** Format: email */
@@ -724,20 +861,6 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        QuestionView: {
-            /** Format: int64 */
-            id: number;
-            /** @enum {string} */
-            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
-            /** @enum {string} */
-            difficulty: "EASY" | "MEDIUM" | "HARD";
-            /** Format: int32 */
-            points: number;
-            prompt: string;
-            content: {
-                [key: string]: unknown;
-            };
-        };
         QuizDetail: {
             /** Format: int64 */
             id: number;
@@ -747,8 +870,17 @@ export interface components {
             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
             author: string;
             /** Format: int32 */
+            questionCount: number;
+            /** Format: int32 */
             totalPoints: number;
-            questions: components["schemas"]["QuestionView"][];
+            settings: components["schemas"]["Settings"];
+            /** Format: int32 */
+            attemptsUsed: number;
+            /** Format: int32 */
+            attemptsLeft: number;
+            /** Format: int64 */
+            openAttemptId: number;
+            canAuthor: boolean;
         };
         CatalogQuiz: {
             /** Format: int64 */
@@ -785,12 +917,15 @@ export interface components {
             /** Format: int64 */
             quizId: number;
             quizTitle: string;
+            /** @enum {string} */
+            status: "IN_PROGRESS" | "SUBMITTED";
             /** Format: double */
             score: number;
             /** Format: double */
             maxScore: number;
             /** Format: int32 */
             percentage: number;
+            passed: boolean;
             /** Format: date-time */
             createdAt: string;
         };
@@ -868,6 +1003,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateQuizRequest"];
+            };
+        };
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Settings"];
             };
         };
         responses: {
@@ -993,6 +1163,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Attempt already submitted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveAnswerResult"];
                 };
             };
         };
@@ -1300,37 +1497,24 @@ export interface operations {
             };
         };
     };
-    submit: {
+    start: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: number;
+                quizId: number;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubmitAttemptRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Score, correct answers and explanations */
+            /** @description Attempt session */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptResult"];
-                };
-            };
-            /** @description Unknown or duplicate question id */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AttemptResult"];
+                    "application/json": components["schemas"]["AttemptSession"];
                 };
             };
             /** @description Quiz doesn't exist or isn't available to you */
@@ -1339,7 +1523,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptResult"];
+                    "application/json": components["schemas"]["AttemptSession"];
+                };
+            };
+            /** @description No attempts left */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptSession"];
                 };
             };
         };
@@ -1504,6 +1697,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"];
                 };
             };
         };
@@ -1683,15 +1898,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Questions and options */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QuizDetail"];
-                };
-            };
             /** @description Quiz doesn't exist or isn't available to you */
             404: {
                 headers: {
@@ -1803,6 +2009,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobView"];
+                };
+            };
+        };
+    };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attemptId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Still in progress */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"];
                 };
             };
         };

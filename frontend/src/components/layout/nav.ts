@@ -27,6 +27,7 @@ export const NAV: NavSection[] = [
 /** Title shown in the top bar for the current path. */
 export function titleFor(pathname: string): string {
   if (pathname.startsWith('/quiz/')) return 'Take quiz';
+  if (pathname.startsWith('/attempts/')) return 'Review attempt';
   if (pathname.startsWith('/studio/')) return 'Quiz builder';
   for (const section of NAV) {
     for (const item of section.items) {

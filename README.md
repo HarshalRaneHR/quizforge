@@ -10,6 +10,7 @@ Instructors build quizzes with AI and publish them; learners explore, take them 
 - **AI generation from a blueprint** — choose the number of questions, split them across types (by hand, *Equal*, *Random* or presets) and pick a difficulty; runs as a **background job** with live progress
 - **Studio for instructors** — create drafts, edit every question in a per-type editor, reorder, generate more with AI, then **publish → archive / restore / duplicate**
 - **Explore** — learners find published quizzes and take them; answer keys never reach the browser before grading
+- **Attempt engine** — start/resume attempts, answers **autosave** (close the tab, come back later), flag questions for review, question navigator; per-quiz **max attempts, pass mark, shuffled questions/options** and **score-only** results; review past attempts
 - **Roles** — Learner, Instructor, Admin, built from fine-grained permissions; admins create users and change roles
 - **Progress** — attempt history with scores and averages
 
@@ -59,8 +60,8 @@ Disable in production with `API_DOCS_ENABLED=false`.
 |---|---|
 | Auth | `POST /api/auth/register · login · refresh · logout`, `GET /api/me` |
 | Practice & catalog | `POST /api/quizzes/generate` (background job), `GET /api/generation-jobs/{id}`, `GET /api/quizzes`, `GET /api/quizzes/explore` |
-| Taking quizzes | `GET /api/quizzes/{id}`, `POST /api/quizzes/{id}/attempts`, `GET /api/attempts/me`, `DELETE /api/quizzes/{id}` |
-| Studio (instructor) | `/api/studio/quizzes` — create, edit, questions CRUD + reorder, AI generate, publish / unpublish / archive / restore / duplicate |
+| Taking quizzes | `GET /api/quizzes/{id}` (landing), `POST /api/quizzes/{id}/attempts` (start/resume), `PUT /api/attempts/{id}/answers/{questionId}` (autosave), `POST /api/attempts/{id}/submit`, `GET /api/attempts/{id}` (review), `GET /api/attempts/me` |
+| Studio (instructor) | `/api/studio/quizzes` — create, edit, settings, questions CRUD + reorder, AI generate, publish / unpublish / archive / restore / duplicate |
 | Admin | `GET/POST /api/admin/users`, `PATCH /api/admin/users/{id}/role` |
 
 ## Design decisions
@@ -70,6 +71,7 @@ Disable in production with `API_DOCS_ENABLED=false`.
 - **Server-side grading and shuffling:** answers are graded on the server; ordering/matching items are stored shuffled so the display order never leaks the answer.
 - **LLM output is never trusted:** every generated question is validated by its type handler; invalid ones are dropped.
 - **Background generation jobs** on virtual threads with progress polling, one job per user, and fail-fast when the model is unreachable — no HTTP request held open for minutes.
+- **Attempts are server-side state:** one open attempt per learner and quiz is enforced by a partial unique index; answers autosave per question; grading uses only what's saved; shuffling is derived from a per-attempt seed so a resumed attempt looks identical; questions are only sent after "Start".
 - **Quiz lifecycle protects results:** questions are editable only in DRAFT; quizzes learners have taken are archived or duplicated, never edited or deleted.
 - **Security:** 15-minute access tokens in memory, rotating refresh tokens in an HttpOnly SameSite=Strict cookie (stored hashed, reuse detection), permission-based method security, 404 instead of 403 for resources you can't see.
 - **Schema managed by Flyway** (`ddl-auto: validate`), N+1 avoided with entity graphs and denormalised counts.

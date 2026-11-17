@@ -29,7 +29,6 @@ import java.util.UUID;
 public class QuizController {
 
     private final QuizService quizzes;
-    private final AttemptService attempts;
     private final GenerationService generation;
 
     @Operation(summary = "Start generating a private practice quiz with AI",
@@ -70,12 +69,12 @@ public class QuizController {
         return PageResponse.of(quizzes.explore(search, pageable));
     }
 
-    @Operation(summary = "Get a quiz to take", description = "Correct answers are never included.")
-    @ApiResponse(responseCode = "200", description = "Questions and options")
+    @Operation(summary = "Quiz landing page",
+            description = "Title, settings and your attempts so far. Questions are only returned by starting an attempt.")
     @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
     @GetMapping("/quizzes/{id}")
     public QuizDetail get(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
-        return quizzes.getForTaking(CurrentUser.of(auth), id);
+        return quizzes.getOverview(CurrentUser.of(auth), id);
     }
 
     @Operation(summary = "Delete a quiz and its attempts",
@@ -89,25 +88,4 @@ public class QuizController {
         quizzes.delete(CurrentUser.of(auth), id);
     }
 
-    @Operation(summary = "Submit answers and get graded results", tags = "Attempts",
-            description = """
-                    One entry per question: {questionId, response}. Response shape by type: \
-                    SINGLE_CHOICE {selected}, MULTIPLE_CHOICE {selected:[...]}, TRUE_FALSE {value}, \
-                    FILL_BLANK {values:[...]}, NUMERIC {value}, ORDERING {order:[...]}, MATCHING {pairs:[...]}. \
-                    Missing answers score 0; partial credit applies to multi-select, fill-blank, ordering and matching.""")
-    @ApiResponse(responseCode = "200", description = "Score, correct answers and explanations")
-    @ApiResponse(responseCode = "400", description = "Unknown or duplicate question id")
-    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
-    @PostMapping("/quizzes/{id}/attempts")
-    public AttemptResult submit(@Parameter(hidden = true) Authentication auth, @PathVariable Long id,
-                                @Valid @RequestBody SubmitAttemptRequest req) {
-        return attempts.submit(CurrentUser.of(auth), id, req);
-    }
-
-    @Operation(summary = "My attempt history (newest first)", tags = "Attempts")
-    @GetMapping("/attempts/me")
-    public PageResponse<AttemptSummary> myAttempts(@Parameter(hidden = true) Authentication auth,
-            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(attempts.myAttempts(CurrentUser.of(auth), pageable));
-    }
 }

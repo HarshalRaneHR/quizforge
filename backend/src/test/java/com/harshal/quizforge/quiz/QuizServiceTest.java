@@ -113,7 +113,7 @@ class QuizServiceTest {
         Quiz quiz = quizOwnedBy("owner@test.com");   // DRAFT + PRIVATE by default
         when(quizRepo.findWithQuestionsById(1L)).thenReturn(Optional.of(quiz));
 
-        assertThatThrownBy(() -> service.getForTaking(new CurrentUser("other@test.com", Set.of()), 1L))
+        assertThatThrownBy(() -> service.getOverview(new CurrentUser("other@test.com", Set.of()), 1L))
                 .isInstanceOf(NotFoundException.class);
     }
 }

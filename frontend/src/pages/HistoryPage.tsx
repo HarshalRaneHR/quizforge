@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ChartLine, ListChecks, Target, Trophy, type LucideIcon } from 'lucide-react';
+import { ChartLine, ListChecks, Play, Target, Trophy, type LucideIcon } from 'lucide-react';
 import { api, errorMessage } from '@/api/client';
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/PageHeader';
@@ -64,8 +64,9 @@ export default function HistoryPage() {
   }
 
   const pageNote = attempts.data.totalPages > 1 ? ' (this page)' : '';
-  const avg = Math.round(rows.reduce((sum, a) => sum + percent(a), 0) / rows.length);
-  const best = Math.max(...rows.map(percent));
+  const finished = rows.filter(a => a.status === 'SUBMITTED');   // open attempts have no score yet
+  const avg = finished.length ? Math.round(finished.reduce((sum, a) => sum + percent(a), 0) / finished.length) : 0;
+  const best = finished.length ? Math.max(...finished.map(percent)) : 0;
 
   return (
     <>
@@ -89,11 +90,22 @@ export default function HistoryPage() {
             {rows.map(a => (
               <TableRow key={a.id}>
                 <TableCell className="pl-6 font-medium">
-                  <Link to={`/quiz/${a.quizId}`} className="hover:underline">{a.quizTitle}</Link>
+                  {a.status === 'IN_PROGRESS'
+                    ? <Link to={`/quiz/${a.quizId}`} className="hover:underline">{a.quizTitle}</Link>
+                    : <Link to={`/attempts/${a.id}`} className="hover:underline">{a.quizTitle}</Link>}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={scoreClass(percent(a))}>{percent(a)}%</Badge>
-                  <span className="ml-2 text-sm text-muted-foreground">{formatPoints(a.score)}/{formatPoints(a.maxScore)} pts</span>
+                  {a.status === 'IN_PROGRESS' ? (
+                    <Button asChild size="xs" variant="outline"><Link to={`/quiz/${a.quizId}`}><Play /> Resume</Link></Button>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className={scoreClass(percent(a))}>{percent(a)}%</Badge>
+                      <span className="text-sm text-muted-foreground">{formatPoints(a.score)}/{formatPoints(a.maxScore)} pts</span>
+                      {a.passed !== null && a.passed !== undefined && (
+                        <Badge variant="outline" className={a.passed ? scoreClass(100) : scoreClass(0)}>{a.passed ? 'Passed' : 'Not passed'}</Badge>
+                      )}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="pr-6 text-right text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</TableCell>
               </TableRow>

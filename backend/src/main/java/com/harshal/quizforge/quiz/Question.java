@@ -1,14 +1,17 @@
 package com.harshal.quizforge.quiz;
 
+import com.harshal.quizforge.question.Difficulty;
+import com.harshal.quizforge.question.QuestionType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnTransformer;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * One question of any type. Type-specific data lives in two JSONB columns, read and written as JSON
+ * text and interpreted by QuestionTypeRegistry — one table serves all question types.
+ */
 @Entity
 @Getter @Setter @NoArgsConstructor
 public class Question {
@@ -20,17 +23,33 @@ public class Question {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Quiz quiz;
 
+    /** 0-based order within the quiz. */
+    @Column(nullable = false)
+    private int position;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private QuestionType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private Difficulty difficulty;
+
+    @Column(nullable = false)
+    private int points;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String prompt;
 
-    @ElementCollection
-    @CollectionTable(name = "question_options", joinColumns = @JoinColumn(name = "question_id"))
-    @OrderColumn(name = "option_index")
-    @Column(name = "option_text", nullable = false, columnDefinition = "TEXT")
-    @BatchSize(size = 50)       // loads options for 50 questions in one query instead of one each
-    private List<String> options = new ArrayList<>();
+    /** What the learner sees (options, items…). JSON text; cast to jsonb on write. */
+    @Column(name = "content", nullable = false, columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
+    private String contentJson;
 
-    private int correctIndex;
+    /** The correct answer. Never sent to the client before grading. */
+    @Column(name = "answer_key", nullable = false, columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
+    private String answerKeyJson;
 
     @Column(columnDefinition = "TEXT")
     private String explanation;

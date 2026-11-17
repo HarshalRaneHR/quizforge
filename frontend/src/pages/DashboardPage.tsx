@@ -21,14 +21,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { PERMISSIONS } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import type { GenerateQuizRequest, Page, QuizSummary } from '@/types';
+import { BlueprintPicker } from '@/components/quiz/BlueprintPicker';
+import { BLUEPRINT_PRESETS, MAX_QUESTIONS, totalOf, type Counts } from '@/lib/questions';
+import type { Difficulty, GenerateQuizRequest, Page, QuizSummary } from '@/types';
 
 const MIN_CHARS = 200;
 const MAX_CHARS = 20000;
 const PAGE_SIZE = 9;
 
 function GenerateQuizCard() {
-  const [form, setForm] = useState<GenerateQuizRequest>({ title: '', sourceText: '', questionCount: 5 });
+  const [title, setTitle] = useState('');
+  const [sourceText, setSourceText] = useState('');
+  const [counts, setCounts] = useState<Counts>(BLUEPRINT_PRESETS[1].counts);
+  const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -42,8 +47,16 @@ function GenerateQuizCard() {
     onError: error => toast.error('Could not generate the quiz', { description: errorMessage(error) }),
   });
 
-  const chars = form.sourceText.length;
+  const chars = sourceText.length;
   const enough = chars >= MIN_CHARS;
+  const total = totalOf(counts);
+  const validBlueprint = total >= 1 && total <= MAX_QUESTIONS;
+
+  const onSubmit = () => generate.mutate({
+    title,
+    sourceText,
+    blueprint: { counts: Object.fromEntries(Object.entries(counts).filter(([, n]) => (n ?? 0) > 0)) as Record<string, number>, difficulty },
+  });
 
   return (
     <Card>
@@ -54,25 +67,18 @@ function GenerateQuizCard() {
         <CardDescription>Paste study notes, an article or a textbook section. AI writes the questions.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form id="generate-form" className="grid gap-4" onSubmit={e => { e.preventDefault(); generate.mutate(form); }}>
-          <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
-            <div className="grid gap-2">
-              <Label htmlFor="title">Title <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input id="title" maxLength={120} placeholder="AI will suggest one" value={form.title}
-                     onChange={e => setForm({ ...form, title: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="count">Questions</Label>
-              <Input id="count" type="number" min={3} max={15} value={form.questionCount}
-                     onChange={e => setForm({ ...form, questionCount: Number(e.target.value) })} />
-            </div>
+        <form id="generate-form" className="grid gap-5" onSubmit={e => { e.preventDefault(); onSubmit(); }}>
+          <div className="grid gap-2">
+            <Label htmlFor="title">Title <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="title" maxLength={120} placeholder="AI will suggest one" value={title}
+                   onChange={e => setTitle(e.target.value)} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="source">Study material</Label>
             <Textarea id="source" required minLength={MIN_CHARS} maxLength={MAX_CHARS} rows={8}
-                      className="min-h-40 resize-y" placeholder="Paste your notes here…" value={form.sourceText}
+                      className="min-h-40 resize-y" placeholder="Paste your notes here…" value={sourceText}
                       aria-describedby="source-hint"
-                      onChange={e => setForm({ ...form, sourceText: e.target.value })} />
+                      onChange={e => setSourceText(e.target.value)} />
             <div id="source-hint" className="flex justify-between text-xs text-muted-foreground">
               <span className={cn(enough && 'text-emerald-600 dark:text-emerald-400')}>
                 {enough ? 'Looks good ✓' : `${MIN_CHARS - chars} more characters needed`}
@@ -80,11 +86,13 @@ function GenerateQuizCard() {
               <span>{chars.toLocaleString()} / {MAX_CHARS.toLocaleString()}</span>
             </div>
           </div>
+          <BlueprintPicker counts={counts} onCountsChange={setCounts} difficulty={difficulty} onDifficultyChange={setDifficulty} />
         </form>
       </CardContent>
-      <CardFooter className="justify-end border-t">
-        <Button type="submit" form="generate-form" disabled={generate.isPending || !enough}>
-          {generate.isPending ? <><LoaderCircle className="animate-spin" /> Generating… up to a minute</> : <><Sparkles /> Generate quiz</>}
+      <CardFooter className="justify-end gap-3 border-t">
+        {generate.isPending && <span className="text-sm text-muted-foreground">Each question type is a separate AI call; this can take a few minutes.</span>}
+        <Button type="submit" form="generate-form" disabled={generate.isPending || !enough || !validBlueprint}>
+          {generate.isPending ? <><LoaderCircle className="animate-spin" /> Generating…</> : <><Sparkles /> Generate {total} questions</>}
         </Button>
       </CardFooter>
     </Card>
@@ -134,6 +142,7 @@ function QuizCard({ quiz }: { quiz: QuizSummary }) {
       </CardHeader>
       <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <Badge variant="secondary"><ListChecks /> {quiz.questionCount} questions</Badge>
+        <span>{quiz.totalPoints} pts</span>
         <span className="flex items-center gap-1"><Calendar className="size-3.5" aria-hidden="true" />{new Date(quiz.createdAt).toLocaleDateString()}</span>
       </CardContent>
       <CardFooter className="mt-auto justify-between">

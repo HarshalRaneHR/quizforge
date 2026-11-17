@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Submit answers and get graded results
-         * @description answers[i] is the chosen option index for question i, in quiz order.
+         * @description One entry per question: {questionId, response}. Response shape by type: SINGLE_CHOICE {selected}, MULTIPLE_CHOICE {selected:[...]}, TRUE_FALSE {value}, FILL_BLANK {values:[...]}, NUMERIC {value}, ORDERING {order:[...]}, MATCHING {pairs:[...]}. Missing answers score 0; partial credit applies to multi-select, fill-blank, ordering and matching.
          */
         post: operations["submit"];
         delete?: never;
@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a quiz from study material with AI
-         * @description Can take 10-60 seconds. Requires quiz:generate.
+         * @description blueprint.counts sets how many questions of each type to create (1-20 in total), blueprint.difficulty sets the level. Can take up to a few minutes. Requires quiz:generate.
          */
         post: operations["generate"];
         delete?: never;
@@ -118,6 +118,30 @@ export interface paths {
          * @description Returns an access token (paste it into Authorize) and sets the refresh-token cookie.
          */
         post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users
+         * @description Filter by email text and/or role. Requires user:read.
+         */
+        get: operations["listUsers"];
+        put?: never;
+        /**
+         * Create a user with a role
+         * @description Requires user:manage. E.g. add an instructor directly.
+         */
+        post: operations["createUser"];
         delete?: never;
         options?: never;
         head?: never;
@@ -219,57 +243,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search users
-         * @description Filter by email text and/or role. Requires user:read.
-         */
-        get: operations["listUsers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AnswerSubmission: {
+            /** Format: int64 */
+            questionId: number;
+            response?: {
+                [key: string]: unknown;
+            };
+        };
         SubmitAttemptRequest: {
-            answers: number[];
+            answers: components["schemas"]["AnswerSubmission"][];
         };
         AttemptResult: {
             /** Format: int64 */
             attemptId: number;
-            /** Format: int32 */
+            /** Format: double */
             score: number;
+            /** Format: double */
+            maxScore: number;
             /** Format: int32 */
-            total: number;
+            percentage: number;
             results: components["schemas"]["QuestionResult"][];
         };
         QuestionResult: {
             /** Format: int64 */
             questionId: number;
-            /** Format: int32 */
-            chosen: number;
-            /** Format: int32 */
-            correct: number;
-            isCorrect: boolean;
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            /** Format: double */
+            pointsAwarded: number;
+            /** Format: double */
+            maxPoints: number;
+            correct: boolean;
+            response: {
+                [key: string]: unknown;
+            };
+            correctAnswer: {
+                [key: string]: unknown;
+            };
             explanation: string;
+        };
+        Blueprint: {
+            /**
+             * @example {
+             *       "SINGLE_CHOICE": 3,
+             *       "TRUE_FALSE": 2,
+             *       "ORDERING": 1
+             *     }
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /** @enum {string} */
+            difficulty?: "EASY" | "MEDIUM" | "HARD";
         };
         GenerateQuizRequest: {
             title?: string;
             sourceText: string;
-            /** Format: int32 */
-            questionCount?: number;
+            blueprint: components["schemas"]["Blueprint"];
         };
         QuizSummary: {
             /** Format: int64 */
@@ -277,6 +311,8 @@ export interface components {
             title: string;
             /** Format: int32 */
             questionCount: number;
+            /** Format: int32 */
+            totalPoints: number;
             /** Format: date-time */
             createdAt: string;
         };
@@ -310,7 +346,10 @@ export interface components {
             email: string;
             password: string;
         };
-        ChangeRoleRequest: {
+        CreateUserRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
             /** @enum {string} */
             role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
         };
@@ -321,6 +360,10 @@ export interface components {
             role: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        ChangeRoleRequest: {
+            /** @enum {string} */
+            role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
         };
         PageResponseQuizSummary: {
             content: components["schemas"]["QuizSummary"][];
@@ -336,13 +379,23 @@ export interface components {
         QuestionView: {
             /** Format: int64 */
             id: number;
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            /** @enum {string} */
+            difficulty: "EASY" | "MEDIUM" | "HARD";
+            /** Format: int32 */
+            points: number;
             prompt: string;
-            options: string[];
+            content: {
+                [key: string]: unknown;
+            };
         };
         QuizDetail: {
             /** Format: int64 */
             id: number;
             title: string;
+            /** Format: int32 */
+            totalPoints: number;
             questions: components["schemas"]["QuestionView"][];
         };
         MeResponse: {
@@ -356,10 +409,12 @@ export interface components {
             /** Format: int64 */
             quizId: number;
             quizTitle: string;
-            /** Format: int32 */
+            /** Format: double */
             score: number;
+            /** Format: double */
+            maxScore: number;
             /** Format: int32 */
-            total: number;
+            percentage: number;
             /** Format: date-time */
             createdAt: string;
         };
@@ -418,7 +473,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptResult"];
                 };
             };
-            /** @description Wrong number of answers */
+            /** @description Unknown or duplicate question id */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -460,7 +515,7 @@ export interface operations {
                     "application/json": components["schemas"]["QuizSummary"];
                 };
             };
-            /** @description Validation failed (e.g. text shorter than 200 characters) */
+            /** @description Validation failed (e.g. text shorter than 200 characters, 0 or >20 questions) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -598,6 +653,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: {
+                /** @description Part of an email, case-insensitive */
+                search?: string;
+                /** @description Only users with this role */
+                role?: "LEARNER" | "INSTRUCTOR" | "ADMIN";
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseUserView"];
+                };
+            };
+            /** @description Not an admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseUserView"];
+                };
+            };
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description User created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Validation failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Email already registered */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
                 };
             };
         };
@@ -783,46 +920,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageResponseAttemptSummary"];
-                };
-            };
-        };
-    };
-    listUsers: {
-        parameters: {
-            query?: {
-                /** @description Part of an email, case-insensitive */
-                search?: string;
-                /** @description Only users with this role */
-                role?: "LEARNER" | "INSTRUCTOR" | "ADMIN";
-                /** @description Zero-based page index (0..N) */
-                page?: number;
-                /** @description The size of the page to be returned */
-                size?: number;
-                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
-                sort?: string[];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of users */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PageResponseUserView"];
-                };
-            };
-            /** @description Not an admin */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PageResponseUserView"];
                 };
             };
         };

@@ -27,17 +27,23 @@ public class Quiz {
     // Stored so the list page doesn't load every question (avoids N+1).
     private int questionCount;
 
+    private int totalPoints;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private User owner;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("id")
+    @OrderBy("position")
     private List<Question> questions = new ArrayList<>();
 
     private Instant createdAt = Instant.now();
 
+    /** Appends a question, keeping position, questionCount and totalPoints in sync. */
     public void addQuestion(Question question) {
         question.setQuiz(this);
+        question.setPosition(questions.size());
         questions.add(question);
+        questionCount = questions.size();
+        totalPoints += question.getPoints();
     }
 }

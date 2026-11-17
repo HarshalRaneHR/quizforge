@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatPoints } from '@/lib/questions';
 import { cn } from '@/lib/utils';
 import type { AttemptSummary, Page } from '@/types';
 
-const percent = (a: AttemptSummary) => Math.round((a.score / a.total) * 100);
+const percent = (a: AttemptSummary) => a.percentage;
 
 function scoreClass(pct: number) {
   if (pct >= 80) return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
@@ -92,7 +93,7 @@ export default function HistoryPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={scoreClass(percent(a))}>{percent(a)}%</Badge>
-                  <span className="ml-2 text-sm text-muted-foreground">{a.score}/{a.total}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{formatPoints(a.score)}/{formatPoints(a.maxScore)} pts</span>
                 </TableCell>
                 <TableCell className="pr-6 text-right text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</TableCell>
               </TableRow>

@@ -2,8 +2,10 @@ package com.harshal.quizforge.quiz;
 
 import com.harshal.quizforge.auth.User;
 import com.harshal.quizforge.auth.UserRepository;
+import com.harshal.quizforge.common.BadRequestException;
 import com.harshal.quizforge.common.NotFoundException;
-import com.harshal.quizforge.quiz.AiQuizGenerator.GeneratedQuestion;
+import com.harshal.quizforge.question.QuestionDraft;
+import com.harshal.quizforge.question.QuestionType;
 import com.harshal.quizforge.quiz.AiQuizGenerator.GeneratedQuiz;
 import com.harshal.quizforge.quiz.QuizDtos.*;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.springframework.util.StringUtils.hasText;
 
@@ -21,14 +24,18 @@ import static org.springframework.util.StringUtils.hasText;
 @RequiredArgsConstructor
 public class QuizService {
 
+    public static final int MAX_QUESTIONS = 20;
+
     private final QuizRepository quizRepo;
     private final UserRepository userRepo;
     private final AttemptRepository attemptRepo;
     private final AiQuizGenerator ai;
+    private final QuestionMapper questions;
 
-    // Deliberately NOT @Transactional: never hold a DB connection while waiting 10-30s on an LLM.
+    // Deliberately NOT @Transactional: never hold a DB connection while waiting 10-60s on an LLM.
     public QuizSummary generate(String email, GenerateQuizRequest req) {
-        GeneratedQuiz generated = ai.generate(req.sourceText(), req.questionCount());
+        Map<QuestionType, Integer> counts = checkedCounts(req.blueprint().counts());
+        GeneratedQuiz generated = ai.generate(req.sourceText(), counts, req.blueprint().difficulty());
         User owner = userRepo.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
@@ -36,15 +43,9 @@ public class QuizService {
         quiz.setTitle(hasText(req.title()) ? req.title().trim() : generated.title());
         quiz.setSourceText(req.sourceText());
         quiz.setOwner(owner);
-        for (GeneratedQuestion g : generated.questions()) {
-            Question q = new Question();
-            q.setPrompt(g.prompt());
-            q.setOptions(new ArrayList<>(g.options()));
-            q.setCorrectIndex(g.correctIndex());
-            q.setExplanation(g.explanation());
-            quiz.addQuestion(q);
+        for (QuestionDraft draft : generated.questions()) {
+            quiz.addQuestion(questions.toEntity(draft));
         }
-        quiz.setQuestionCount(quiz.getQuestions().size());
         return toSummary(quizRepo.save(quiz));   // save() runs in its own transaction; questions cascade
     }
 
@@ -56,10 +57,8 @@ public class QuizService {
     @Transactional(readOnly = true)
     public QuizDetail getForTaking(String email, Long id) {
         Quiz quiz = getOwnedQuiz(email, id);
-        List<QuestionView> questions = quiz.getQuestions().stream()
-                .map(q -> new QuestionView(q.getId(), q.getPrompt(), List.copyOf(q.getOptions())))
-                .toList();
-        return new QuizDetail(quiz.getId(), quiz.getTitle(), questions);
+        List<QuestionView> views = quiz.getQuestions().stream().map(questions::toView).toList();
+        return new QuizDetail(quiz.getId(), quiz.getTitle(), quiz.getTotalPoints(), views);
     }
 
     @Transactional
@@ -82,7 +81,17 @@ public class QuizService {
         return quiz;
     }
 
+    static Map<QuestionType, Integer> checkedCounts(Map<QuestionType, Integer> requested) {
+        Map<QuestionType, Integer> counts = new EnumMap<>(QuestionType.class);
+        requested.forEach((type, n) -> { if (type != null && n != null && n > 0) counts.put(type, n); });
+        int total = counts.values().stream().mapToInt(Integer::intValue).sum();
+        if (total < 1 || total > MAX_QUESTIONS) {
+            throw new BadRequestException("Choose between 1 and " + MAX_QUESTIONS + " questions in total (got " + total + ")");
+        }
+        return counts;
+    }
+
     private static QuizSummary toSummary(Quiz q) {
-        return new QuizSummary(q.getId(), q.getTitle(), q.getQuestionCount(), q.getCreatedAt());
+        return new QuizSummary(q.getId(), q.getTitle(), q.getQuestionCount(), q.getTotalPoints(), q.getCreatedAt());
     }
 }

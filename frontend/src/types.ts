@@ -16,6 +16,10 @@ export type UserView = WithRole<Schemas['UserView']>;
 export type GenerateQuizRequest = Schemas['GenerateQuizRequest'];
 export type QuizSummary = Schemas['QuizSummary'];
 export type QuizDetail = Schemas['QuizDetail'];
+export type QuestionView = Schemas['QuestionView'];
+export type QuestionType = QuestionView['type'];
+export type Difficulty = QuestionView['difficulty'];
+export type QuestionResult = Schemas['QuestionResult'];
 export type AttemptResult = Schemas['AttemptResult'];
 export type AttemptSummary = Schemas['AttemptSummary'];
 

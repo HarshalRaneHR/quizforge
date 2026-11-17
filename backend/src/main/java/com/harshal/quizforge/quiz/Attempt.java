@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter @Setter @NoArgsConstructor
@@ -22,8 +24,18 @@ public class Attempt {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Quiz quiz;
 
-    private int score;
-    private int total;
+    /** Points earned (fractional with partial credit). */
+    private double score;
+
+    private double maxScore;
 
     private Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AttemptAnswer> answers = new ArrayList<>();
+
+    public void addAnswer(AttemptAnswer answer) {
+        answer.setAttempt(this);
+        answers.add(answer);
+    }
 }

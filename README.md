@@ -41,6 +41,10 @@ Run backend tests: `cd backend && ./mvnw test`
 
 ## API
 
+Interactive docs (Swagger UI): **http://localhost:8080/swagger-ui.html** · OpenAPI spec: `/v3/api-docs`.
+To try protected endpoints: call `POST /api/auth/login`, copy `token`, click **Authorize** and paste it.
+Disable in production with `API_DOCS_ENABLED=false`.
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/api/auth/register` | public | Create account, returns JWT |

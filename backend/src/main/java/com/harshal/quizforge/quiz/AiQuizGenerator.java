@@ -111,6 +111,19 @@ public class AiQuizGenerator {
     }
 
     public GeneratedQuiz generate(String sourceText, Map<QuestionType, Integer> counts, Difficulty difficulty) {
+        return generate(sourceText, counts, difficulty, done -> {});
+    }
+
+    /** Number of LLM calls a blueprint needs (one per question type used) — the job's progress total. */
+    public static int stepsFor(Map<QuestionType, Integer> counts) {
+        return (int) counts.values().stream().filter(n -> n != null && n > 0).count();
+    }
+
+    /**
+     * @param onStepDone called with the number of finished steps (question types) so far, for progress reporting
+     */
+    public GeneratedQuiz generate(String sourceText, Map<QuestionType, Integer> counts, Difficulty difficulty,
+                                  java.util.function.IntConsumer onStepDone) {
         if (chatClient == null) {
             throw new AiGenerationException("AI provider is not configured");
         }
@@ -118,6 +131,7 @@ public class AiQuizGenerator {
         List<QuestionDraft> drafts = new ArrayList<>();
         String title = null;
         RuntimeException lastFailure = null;
+        int done = 0;
 
         for (QuestionType type : QuestionType.values()) {   // stable order: grouped by type
             int count = counts.getOrDefault(type, 0);
@@ -127,9 +141,14 @@ public class AiQuizGenerator {
                 drafts.addAll(result.questions());
                 if (title == null && result.title() != null && !result.title().isBlank()) title = result.title().trim();
             } catch (RuntimeException e) {
+                // Can't reach the model at all: every other type would fail the same way, so stop now.
+                if (isUnreachable(e)) {
+                    throw new AiGenerationException("AI service is unreachable. Is the model server (Ollama) running?", e);
+                }
                 lastFailure = e;
                 log.warn("AI generation failed for {}: {}", type, e.getMessage());
             }
+            onStepDone.accept(++done);
         }
 
         if (drafts.isEmpty()) {
@@ -164,6 +183,14 @@ public class AiQuizGenerator {
         }
         log.info("Generated {}/{} valid {} questions", valid.size(), count, type);
         return new GeneratedQuiz(batch == null ? null : batch.title(), valid);
+    }
+
+    /** Connection-level failure (refused, timeout, DNS) anywhere in the cause chain. */
+    static boolean isUnreachable(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof java.io.IOException) return true;
+        }
+        return false;
     }
 
     private static String difficultyHint(Difficulty level) {

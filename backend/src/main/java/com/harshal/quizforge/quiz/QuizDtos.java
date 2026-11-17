@@ -24,7 +24,12 @@ public final class QuizDtos {
             @NotBlank @Size(min = 200, max = 20000, message = "must be 200-20000 characters") String sourceText,
             @NotNull @Valid Blueprint blueprint) {}
 
-    public record QuizSummary(Long id, String title, int questionCount, int totalPoints, Instant createdAt) {}
+    public record QuizSummary(Long id, String title, QuizStatus status, Visibility visibility, int questionCount,
+                              int totalPoints, Instant createdAt, Instant updatedAt) {}
+
+    /** A published quiz in the Explore catalog. */
+    public record CatalogQuiz(Long id, String title, String description, String author, int questionCount,
+                              int totalPoints, Instant publishedAt) {}
 
     /**
      * Sent to the browser while taking a quiz — deliberately has NO answer key.
@@ -33,7 +38,8 @@ public final class QuizDtos {
     public record QuestionView(Long id, QuestionType type, Difficulty difficulty, int points, String prompt,
                                Map<String, Object> content) {}
 
-    public record QuizDetail(Long id, String title, int totalPoints, List<QuestionView> questions) {}
+    public record QuizDetail(Long id, String title, String description, QuizStatus status, String author,
+                             int totalPoints, List<QuestionView> questions) {}
 
     /** {@code response} shape depends on the question type; missing = unanswered. */
     public record AnswerSubmission(@NotNull Long questionId, Map<String, Object> response) {}

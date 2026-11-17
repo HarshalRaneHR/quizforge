@@ -21,10 +21,22 @@ public class Quiz {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    /** Study material for AI-generated practice quizzes (null for hand-built ones). */
+    @Column(columnDefinition = "TEXT")
     private String sourceText;
 
-    // Stored so the list page doesn't load every question (avoids N+1).
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private QuizStatus status = QuizStatus.DRAFT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Visibility visibility = Visibility.PRIVATE;
+
+    // Stored so list pages don't load every question (avoids N+1).
     private int questionCount;
 
     private int totalPoints;
@@ -38,12 +50,36 @@ public class Quiz {
 
     private Instant createdAt = Instant.now();
 
+    private Instant updatedAt = Instant.now();
+
+    private Instant publishedAt;
+
     /** Appends a question, keeping position, questionCount and totalPoints in sync. */
     public void addQuestion(Question question) {
         question.setQuiz(this);
-        question.setPosition(questions.size());
         questions.add(question);
+        recalculate();
+    }
+
+    public void removeQuestion(Question question) {
+        questions.remove(question);   // orphanRemoval deletes the row
+        recalculate();
+    }
+
+    /** Re-derives positions and the denormalised totals after any change to the question list. */
+    public void recalculate() {
+        for (int i = 0; i < questions.size(); i++) questions.get(i).setPosition(i);
         questionCount = questions.size();
-        totalPoints += question.getPoints();
+        totalPoints = questions.stream().mapToInt(Question::getPoints).sum();
+        updatedAt = Instant.now();
+    }
+
+    public boolean isDraft() {
+        return status == QuizStatus.DRAFT;
+    }
+
+    /** Anyone signed in can find and take it. */
+    public boolean isListed() {
+        return status == QuizStatus.PUBLISHED && visibility == Visibility.PUBLIC;
     }
 }

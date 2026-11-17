@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Calendar, ListChecks, LoaderCircle, Play, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, Calendar, Compass, ListChecks, Play, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/api/client';
 import { useAuth } from '@/auth/auth-context';
 import { EmptyState } from '@/components/app/EmptyState';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Pagination } from '@/components/app/Pagination';
+import { GenerateForm, type GenerateValues } from '@/components/quiz/GenerateForm';
+import { GenerationProgress } from '@/components/quiz/GenerationProgress';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -15,86 +17,55 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
+import { isFinished, useGenerationJob } from '@/hooks/use-generation-job';
 import { PERMISSIONS } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { BlueprintPicker } from '@/components/quiz/BlueprintPicker';
-import { BLUEPRINT_PRESETS, MAX_QUESTIONS, totalOf, type Counts } from '@/lib/questions';
-import type { Difficulty, GenerateQuizRequest, Page, QuizSummary } from '@/types';
+import type { JobView, Page, QuizSummary } from '@/types';
 
-const MIN_CHARS = 200;
-const MAX_CHARS = 20000;
 const PAGE_SIZE = 9;
 
 function GenerateQuizCard() {
-  const [title, setTitle] = useState('');
-  const [sourceText, setSourceText] = useState('');
-  const [counts, setCounts] = useState<Counts>(BLUEPRINT_PRESETS[1].counts);
-  const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
+  const [jobId, setJobId] = useState<string | null>(null);
+  const job = useGenerationJob(jobId);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const generate = useMutation({
-    mutationFn: (body: GenerateQuizRequest) => api.post<QuizSummary>('/quizzes/generate', body).then(r => r.data),
-    onSuccess: quiz => {
+  const start = useMutation({
+    mutationFn: (body: GenerateValues) => api.post<JobView>('/quizzes/generate', body).then(r => r.data),
+    onSuccess: j => setJobId(j.id),
+    onError: error => toast.error('Could not start generating', { description: errorMessage(error) }),
+  });
+
+  // When the background job finishes: open the new quiz, or report the failure (once per job).
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    const j = job.data;
+    if (!j || !isFinished(j) || handled.current === j.id) return;
+    handled.current = j.id;
+    if (j.status === 'SUCCEEDED') {
       queryClient.invalidateQueries({ queryKey: ['quizzes'] });
-      toast.success(`"${quiz.title}" is ready`, { description: `${quiz.questionCount} questions generated.` });
-      navigate(`/quiz/${quiz.id}`);
-    },
-    onError: error => toast.error('Could not generate the quiz', { description: errorMessage(error) }),
-  });
+      toast.success('Your quiz is ready', { description: `${j.questionCount} questions generated.` });
+      navigate(`/quiz/${j.quizId}`);
+    } else {
+      toast.error('Generation failed', { description: j.error });
+    }
+  }, [job.data, navigate, queryClient]);
 
-  const chars = sourceText.length;
-  const enough = chars >= MIN_CHARS;
-  const total = totalOf(counts);
-  const validBlueprint = total >= 1 && total <= MAX_QUESTIONS;
-
-  const onSubmit = () => generate.mutate({
-    title,
-    sourceText,
-    blueprint: { counts: Object.fromEntries(Object.entries(counts).filter(([, n]) => (n ?? 0) > 0)) as Record<string, number>, difficulty },
-  });
+  const running = !!jobId && !isFinished(job.data);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="size-5 text-primary" aria-hidden="true" /> Generate a quiz
+          <Sparkles className="size-5 text-primary" aria-hidden="true" /> Generate a practice quiz
         </CardTitle>
-        <CardDescription>Paste study notes, an article or a textbook section. AI writes the questions.</CardDescription>
+        <CardDescription>Paste study material, choose the question types, and AI writes a quiz just for you.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form id="generate-form" className="grid gap-5" onSubmit={e => { e.preventDefault(); onSubmit(); }}>
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title <span className="font-normal text-muted-foreground">(optional)</span></Label>
-            <Input id="title" maxLength={120} placeholder="AI will suggest one" value={title}
-                   onChange={e => setTitle(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="source">Study material</Label>
-            <Textarea id="source" required minLength={MIN_CHARS} maxLength={MAX_CHARS} rows={8}
-                      className="min-h-40 resize-y" placeholder="Paste your notes here…" value={sourceText}
-                      aria-describedby="source-hint"
-                      onChange={e => setSourceText(e.target.value)} />
-            <div id="source-hint" className="flex justify-between text-xs text-muted-foreground">
-              <span className={cn(enough && 'text-emerald-600 dark:text-emerald-400')}>
-                {enough ? 'Looks good ✓' : `${MIN_CHARS - chars} more characters needed`}
-              </span>
-              <span>{chars.toLocaleString()} / {MAX_CHARS.toLocaleString()}</span>
-            </div>
-          </div>
-          <BlueprintPicker counts={counts} onCountsChange={setCounts} difficulty={difficulty} onDifficultyChange={setDifficulty} />
-        </form>
+      <CardContent className="space-y-4">
+        {jobId && <GenerationProgress job={job.data} onDismiss={() => setJobId(null)} />}
+        <GenerateForm withTitle busy={start.isPending || running} onSubmit={values => start.mutate(values)} />
       </CardContent>
-      <CardFooter className="justify-end gap-3 border-t">
-        {generate.isPending && <span className="text-sm text-muted-foreground">Each question type is a separate AI call; this can take a few minutes.</span>}
-        <Button type="submit" form="generate-form" disabled={generate.isPending || !enough || !validBlueprint}>
-          {generate.isPending ? <><LoaderCircle className="animate-spin" /> Generating…</> : <><Sparkles /> Generate {total} questions</>}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
@@ -158,8 +129,8 @@ export default function DashboardPage() {
   const [page, setPage] = useState(0);
 
   const quizzes = useQuery({
-    queryKey: ['quizzes', page],
-    queryFn: () => api.get<Page<QuizSummary>>('/quizzes', { params: { page, size: PAGE_SIZE } }).then(r => r.data),
+    queryKey: ['quizzes', 'PRIVATE', page],
+    queryFn: () => api.get<Page<QuizSummary>>('/quizzes', { params: { visibility: 'PRIVATE', page, size: PAGE_SIZE } }).then(r => r.data),
     placeholderData: keepPreviousData,   // keeps the old page visible while the next one loads
   });
 
@@ -168,12 +139,13 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title={<>Hi, <span className="capitalize">{firstName}</span> 👋</>}
-                  description="Generate a new quiz or pick up one you've already made." />
+                  description="Make a practice quiz from your notes, or explore quizzes from instructors."
+                  actions={<Button asChild variant="outline"><Link to="/explore"><Compass /> Explore quizzes</Link></Button>} />
 
       {can(PERMISSIONS.QUIZ_GENERATE) && <GenerateQuizCard />}
 
       <div className="mt-10 mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">My quizzes</h2>
+        <h2 className="text-lg font-semibold">My practice quizzes</h2>
         {quizzes.data && <Badge variant="outline">{quizzes.data.totalElements} total</Badge>}
       </div>
 
@@ -184,7 +156,7 @@ export default function DashboardPage() {
       ) : quizzes.isError ? (
         <p role="alert" className="text-destructive">{errorMessage(quizzes.error)}</p>
       ) : quizzes.data.content.length === 0 ? (
-        <EmptyState icon={BookOpen} title="No quizzes yet" description="Paste some study material above to generate your first quiz." />
+        <EmptyState icon={BookOpen} title="No practice quizzes yet" description="Paste some study material above to generate your first one." />
       ) : (
         <>
           <ul className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', quizzes.isPlaceholderData && 'opacity-60')}>

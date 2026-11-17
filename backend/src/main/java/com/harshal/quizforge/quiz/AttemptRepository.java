@@ -10,5 +10,8 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     @EntityGraph(attributePaths = "quiz")
     Page<Attempt> findByUserEmail(String email, Pageable pageable);
 
+    /** Has anyone other than the owner attempted this quiz? (Then it must be archived, not deleted.) */
+    boolean existsByQuizIdAndUserEmailNot(Long quizId, String ownerEmail);
+
     void deleteByQuizId(Long quizId);
 }

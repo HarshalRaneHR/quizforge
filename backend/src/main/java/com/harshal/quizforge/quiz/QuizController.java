@@ -1,7 +1,9 @@
 package com.harshal.quizforge.quiz;
 
-import com.harshal.quizforge.auth.Permission;
+import com.harshal.quizforge.auth.CurrentUser;
 import com.harshal.quizforge.common.PageResponse;
+import com.harshal.quizforge.quiz.GenerationService.JobRequest;
+import com.harshal.quizforge.quiz.GenerationService.JobView;
 import com.harshal.quizforge.quiz.QuizDtos.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,51 +20,73 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-@Tag(name = "Quizzes", description = "Generate, list, take and delete quizzes")
+@Tag(name = "Quizzes", description = "Practice quizzes, the Explore catalog, taking and deleting quizzes")
 public class QuizController {
 
     private final QuizService quizzes;
     private final AttemptService attempts;
+    private final GenerationService generation;
 
-    @Operation(summary = "Generate a quiz from study material with AI",
+    @Operation(summary = "Start generating a private practice quiz with AI",
             description = """
-                    blueprint.counts sets how many questions of each type to create (1-20 in total), \
-                    blueprint.difficulty sets the level. Can take up to a few minutes. Requires quiz:generate.""")
-    @ApiResponse(responseCode = "201", description = "Quiz created")
-    @ApiResponse(responseCode = "400", description = "Validation failed (e.g. text shorter than 200 characters, 0 or >20 questions)")
-    @ApiResponse(responseCode = "502", description = "AI service failed or returned invalid output")
+                    Runs in the background: returns a job to poll at GET /api/generation-jobs/{id}. \
+                    blueprint.counts sets how many questions of each type (1-20 total), blueprint.difficulty the level. \
+                    One job at a time per user. Requires quiz:generate.""")
+    @ApiResponse(responseCode = "202", description = "Job started")
+    @ApiResponse(responseCode = "400", description = "Validation failed (text 200-20000 characters, 1-20 questions)")
+    @ApiResponse(responseCode = "409", description = "A generation job is already running for you")
     @PostMapping("/quizzes/generate")
-    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseStatus(HttpStatus.ACCEPTED)
     @PreAuthorize("hasAuthority('quiz:generate')")
-    public QuizSummary generate(@Parameter(hidden = true) Authentication auth, @Valid @RequestBody GenerateQuizRequest req) {
-        return quizzes.generate(auth.getName(), req);
+    public JobView generate(@Parameter(hidden = true) Authentication auth, @Valid @RequestBody GenerateQuizRequest req) {
+        return generation.startPracticeQuiz(CurrentUser.of(auth), new JobRequest(req.title(), req.sourceText(), req.blueprint()));
     }
 
-    @Operation(summary = "My quizzes (newest first)")
+    @Operation(summary = "Progress of a generation job", tags = "Generation",
+            description = "Poll until status is SUCCEEDED (quizId set) or FAILED (error set).")
+    @GetMapping("/generation-jobs/{id}")
+    public JobView job(@Parameter(hidden = true) Authentication auth, @PathVariable UUID id) {
+        return generation.get(CurrentUser.of(auth), id);
+    }
+
+    @Operation(summary = "Quizzes I own", description = "Filter by visibility (PRIVATE practice / PUBLIC authored) and status.")
     @GetMapping("/quizzes")
     public PageResponse<QuizSummary> list(@Parameter(hidden = true) Authentication auth,
+            @RequestParam(required = false) Visibility visibility,
+            @RequestParam(required = false) QuizStatus status,
             @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(quizzes.list(auth.getName(), pageable));
+        return PageResponse.of(quizzes.listMine(CurrentUser.of(auth), visibility, status, pageable));
+    }
+
+    @Operation(summary = "Explore published quizzes", description = "Published, public quizzes from instructors; search by title.")
+    @GetMapping("/quizzes/explore")
+    public PageResponse<CatalogQuiz> explore(@RequestParam(required = false) String search,
+            @ParameterObject @PageableDefault(size = 12, sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return PageResponse.of(quizzes.explore(search, pageable));
     }
 
     @Operation(summary = "Get a quiz to take", description = "Correct answers are never included.")
     @ApiResponse(responseCode = "200", description = "Questions and options")
-    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't yours")
+    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
     @GetMapping("/quizzes/{id}")
     public QuizDetail get(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
-        return quizzes.getForTaking(auth.getName(), id);
+        return quizzes.getForTaking(CurrentUser.of(auth), id);
     }
 
-    @Operation(summary = "Delete a quiz and its attempts", description = "Own quizzes, or any quiz with quiz:manage-all.")
+    @Operation(summary = "Delete a quiz and its attempts",
+            description = "Owner (or quiz:manage-all). Quizzes learners have attempted must be archived instead.")
     @ApiResponse(responseCode = "204", description = "Deleted")
-    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't yours")
+    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
+    @ApiResponse(responseCode = "409", description = "Learners have attempted it; archive instead")
     @DeleteMapping("/quizzes/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
-        quizzes.delete(auth.getName(), id, canManageAll(auth));
+        quizzes.delete(CurrentUser.of(auth), id);
     }
 
     @Operation(summary = "Submit answers and get graded results", tags = "Attempts",
@@ -73,22 +97,17 @@ public class QuizController {
                     Missing answers score 0; partial credit applies to multi-select, fill-blank, ordering and matching.""")
     @ApiResponse(responseCode = "200", description = "Score, correct answers and explanations")
     @ApiResponse(responseCode = "400", description = "Unknown or duplicate question id")
-    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't yours")
+    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
     @PostMapping("/quizzes/{id}/attempts")
     public AttemptResult submit(@Parameter(hidden = true) Authentication auth, @PathVariable Long id,
                                 @Valid @RequestBody SubmitAttemptRequest req) {
-        return attempts.submit(auth.getName(), id, req);
+        return attempts.submit(CurrentUser.of(auth), id, req);
     }
 
     @Operation(summary = "My attempt history (newest first)", tags = "Attempts")
     @GetMapping("/attempts/me")
     public PageResponse<AttemptSummary> myAttempts(@Parameter(hidden = true) Authentication auth,
             @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(attempts.myAttempts(auth.getName(), pageable));
-    }
-
-    private static boolean canManageAll(Authentication auth) {
-        String needed = Permission.QUIZ_MANAGE_ALL.authority();
-        return auth.getAuthorities().stream().anyMatch(a -> needed.equals(a.getAuthority()));
+        return PageResponse.of(attempts.myAttempts(CurrentUser.of(auth), pageable));
     }
 }

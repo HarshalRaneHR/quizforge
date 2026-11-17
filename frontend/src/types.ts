@@ -22,5 +22,13 @@ export type Difficulty = QuestionView['difficulty'];
 export type QuestionResult = Schemas['QuestionResult'];
 export type AttemptResult = Schemas['AttemptResult'];
 export type AttemptSummary = Schemas['AttemptSummary'];
+export type QuizStatus = QuizSummary['status'];
+export type Visibility = QuizSummary['visibility'];
+export type CatalogQuiz = Schemas['CatalogQuiz'];
+export type JobView = Schemas['JobView'];
+export type StudioQuiz = Schemas['StudioQuiz'];
+export type AuthoringQuestion = Schemas['AuthoringQuestion'];
+export type AuthoringQuestionView = Schemas['AuthoringQuestionView'];
+export type MatchPair = Schemas['MatchPair'];
 
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };

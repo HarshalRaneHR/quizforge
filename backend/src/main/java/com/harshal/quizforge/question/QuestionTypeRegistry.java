@@ -94,6 +94,10 @@ public class QuestionTypeRegistry {
 
     // ---------------------------------------------------------------- JSON helpers
 
+    public <T> T read(String jsonText, Class<T> type) {
+        return json.readValue(jsonText, type);
+    }
+
     public String toJson(Object value) {
         return json.writeValueAsString(value);
     }

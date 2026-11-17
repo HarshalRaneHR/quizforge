@@ -1,6 +1,9 @@
 package com.harshal.quizforge.quiz;
 
+import com.harshal.quizforge.auth.CurrentUser;
+import com.harshal.quizforge.auth.UserRepository;
 import com.harshal.quizforge.common.BadRequestException;
+import com.harshal.quizforge.common.NotFoundException;
 import com.harshal.quizforge.question.QuestionTypeRegistry;
 import com.harshal.quizforge.quiz.QuizDtos.*;
 import lombok.RequiredArgsConstructor;
@@ -28,15 +31,17 @@ public class AttemptService {
     private final AttemptRepository attemptRepo;
     private final QuizService quizService;
     private final QuestionTypeRegistry registry;
+    private final UserRepository users;
 
     /** Grades on the server: the client never sees answer keys before submitting. */
     @Transactional
-    public AttemptResult submit(String email, Long quizId, SubmitAttemptRequest req) {
-        Quiz quiz = quizService.getOwnedQuiz(email, quizId);
+    public AttemptResult submit(CurrentUser user, Long quizId, SubmitAttemptRequest req) {
+        Quiz quiz = quizService.getTakeable(user, quizId);
         Map<Long, Map<String, Object>> responses = indexByQuestion(req, quiz);
 
         Attempt attempt = new Attempt();
-        attempt.setUser(quiz.getOwner());
+        // The person taking the quiz, not the quiz owner (published quizzes are taken by many learners).
+        attempt.setUser(users.findByEmail(user.email()).orElseThrow(() -> new NotFoundException("User not found")));
         attempt.setQuiz(quiz);
         List<QuestionResult> results = new ArrayList<>();
         double score = 0;
@@ -69,8 +74,8 @@ public class AttemptService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AttemptSummary> myAttempts(String email, Pageable pageable) {
-        return attemptRepo.findByUserEmail(email, pageable)
+    public Page<AttemptSummary> myAttempts(CurrentUser user, Pageable pageable) {
+        return attemptRepo.findByUserEmail(user.email(), pageable)
                 .map(a -> new AttemptSummary(a.getId(), a.getQuiz().getId(), a.getQuiz().getTitle(),
                         a.getScore(), a.getMaxScore(), percentage(a.getScore(), a.getMaxScore()), a.getCreatedAt()));
     }

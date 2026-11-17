@@ -15,6 +15,12 @@ public class QuestionMapper {
 
     public Question toEntity(QuestionDraft draft) {
         Question q = new Question();
+        apply(draft, q);
+        return q;
+    }
+
+    /** Overwrites an existing question with a draft (used when editing). */
+    public void apply(QuestionDraft draft, Question q) {
         q.setType(draft.type());
         q.setDifficulty(draft.difficulty());
         q.setPoints(draft.points());
@@ -22,6 +28,18 @@ public class QuestionMapper {
         q.setContentJson(registry.toJson(draft.content()));
         q.setAnswerKeyJson(registry.toJson(draft.answerKey()));
         q.setExplanation(draft.explanation());
+    }
+
+    /** Copy for "duplicate quiz". */
+    public Question copy(Question source) {
+        Question q = new Question();
+        q.setType(source.getType());
+        q.setDifficulty(source.getDifficulty());
+        q.setPoints(source.getPoints());
+        q.setPrompt(source.getPrompt());
+        q.setContentJson(source.getContentJson());
+        q.setAnswerKeyJson(source.getAnswerKeyJson());
+        q.setExplanation(source.getExplanation());
         return q;
     }
 

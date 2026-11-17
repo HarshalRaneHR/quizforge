@@ -16,20 +16,27 @@ public final class QuestionFactory {
     public record Pair(String left, String right) {}
 
     private final RandomGenerator random;
+    /** AI output: shuffle (models tend to put the right answer first). Authors: keep their option order. */
+    private final boolean shuffleOptions;
 
     public QuestionFactory(RandomGenerator random) {
+        this(random, true);
+    }
+
+    public QuestionFactory(RandomGenerator random, boolean shuffleOptions) {
         this.random = random;
+        this.shuffleOptions = shuffleOptions;
     }
 
     public QuestionDraft singleChoice(Difficulty d, String prompt, List<String> options, int correctIndex, String explanation) {
-        Shuffle s = shuffle(options.size());
+        Shuffle s = optionShuffle(options.size());
         return draft(QuestionType.SINGLE_CHOICE, d, prompt,
                 new QuestionContent.Choice(s.apply(options)),
                 new AnswerKey.SingleChoice(s.newIndexOf(correctIndex)), explanation);
     }
 
     public QuestionDraft multipleChoice(Difficulty d, String prompt, List<String> options, List<Integer> correctIndexes, String explanation) {
-        Shuffle s = shuffle(options.size());
+        Shuffle s = optionShuffle(options.size());
         List<Integer> correct = correctIndexes.stream().map(s::newIndexOf).sorted().toList();
         return draft(QuestionType.MULTIPLE_CHOICE, d, prompt,
                 new QuestionContent.Choice(s.apply(options)), new AnswerKey.MultipleChoice(correct), explanation);
@@ -86,6 +93,10 @@ public final class QuestionFactory {
         int newIndexOf(int originalIndex) {
             return perm.indexOf(originalIndex);
         }
+    }
+
+    private Shuffle optionShuffle(int n) {
+        return shuffleOptions ? shuffle(n) : new Shuffle(IntStream.range(0, n).boxed().toList());
     }
 
     private Shuffle shuffle(int n) {

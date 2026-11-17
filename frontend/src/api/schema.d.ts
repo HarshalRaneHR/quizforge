@@ -4,6 +4,219 @@
  */
 
 export interface paths {
+    "/api/studio/quizzes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a quiz for editing
+         * @description Includes answer keys, in the editor's natural form.
+         */
+        get: operations["get"];
+        /** Update title and description */
+        put: operations["update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/questions/{questionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a question (draft only) */
+        put: operations["updateQuestion"];
+        post?: never;
+        /** Delete a question (draft only) */
+        delete: operations["deleteQuestion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/questions/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder questions (draft only)
+         * @description questionIds = every question id in the new order.
+         */
+        put: operations["reorder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an empty draft quiz */
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Back to draft for editing
+         * @description PUBLISHED → DRAFT, only if no learner has attempted it.
+         */
+        post: operations["unpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an archived quiz
+         * @description ARCHIVED → PUBLISHED.
+         */
+        post: operations["restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a question (draft only) */
+        post: operations["addQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish: learners can find and take it
+         * @description DRAFT → PUBLISHED; needs at least one question.
+         */
+        post: operations["publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate questions with AI and add them to this draft
+         * @description Background job; poll GET /api/generation-jobs/{id}.
+         */
+        post: operations["generate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate as a new draft
+         * @description The way to change a quiz learners have already taken.
+         */
+        post: operations["duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/quizzes/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive: hide from learners, keep results
+         * @description PUBLISHED → ARCHIVED.
+         */
+        post: operations["archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quizzes/{id}/attempts": {
         parameters: {
             query?: never;
@@ -34,10 +247,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Generate a quiz from study material with AI
-         * @description blueprint.counts sets how many questions of each type to create (1-20 in total), blueprint.difficulty sets the level. Can take up to a few minutes. Requires quiz:generate.
+         * Start generating a private practice quiz with AI
+         * @description Runs in the background: returns a job to poll at GET /api/generation-jobs/{id}. blueprint.counts sets how many questions of each type (1-20 total), blueprint.difficulty the level. One job at a time per user. Requires quiz:generate.
          */
-        post: operations["generate"];
+        post: operations["generate_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -175,7 +388,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** My quizzes (newest first) */
+        /**
+         * Quizzes I own
+         * @description Filter by visibility (PRIVATE practice / PUBLIC authored) and status.
+         */
         get: operations["list"];
         put?: never;
         post?: never;
@@ -196,14 +412,34 @@ export interface paths {
          * Get a quiz to take
          * @description Correct answers are never included.
          */
-        get: operations["get"];
+        get: operations["get_1"];
         put?: never;
         post?: never;
         /**
          * Delete a quiz and its attempts
-         * @description Own quizzes, or any quiz with quiz:manage-all.
+         * @description Owner (or quiz:manage-all). Quizzes learners have attempted must be archived instead.
          */
         delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quizzes/explore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explore published quizzes
+         * @description Published, public quizzes from instructors; search by title.
+         */
+        get: operations["explore"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -218,6 +454,26 @@ export interface paths {
         };
         /** Current user's email, role and permissions */
         get: operations["me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/generation-jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Progress of a generation job
+         * @description Poll until status is SUCCEEDED (quizId set) or FAILED (error set).
+         */
+        get: operations["job"];
         put?: never;
         post?: never;
         delete?: never;
@@ -247,6 +503,106 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        UpdateQuizRequest: {
+            title: string;
+            description?: string;
+        };
+        AuthoringQuestion: {
+            /** @enum {string} */
+            type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_BLANK" | "NUMERIC" | "ORDERING" | "MATCHING";
+            /** @enum {string} */
+            difficulty?: "EASY" | "MEDIUM" | "HARD";
+            /** Format: int32 */
+            points?: number;
+            prompt: string;
+            explanation?: string;
+            options?: string[];
+            correctIndexes?: number[];
+            answer?: boolean;
+            blanks?: string[][];
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            tolerance?: number;
+            unit?: string;
+            items?: string[];
+            pairs?: components["schemas"]["MatchPair"][];
+        };
+        AuthoringQuestionView: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int32 */
+            position: number;
+            question: components["schemas"]["AuthoringQuestion"];
+        };
+        MatchPair: {
+            left: string;
+            right: string;
+        };
+        StudioQuiz: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            /** @enum {string} */
+            visibility: "PRIVATE" | "PUBLIC";
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: int32 */
+            totalPoints: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            publishedAt: string;
+            hasLearnerAttempts: boolean;
+            questions: components["schemas"]["AuthoringQuestionView"][];
+        };
+        ReorderRequest: {
+            questionIds: number[];
+        };
+        CreateQuizRequest: {
+            title: string;
+            description?: string;
+        };
+        Blueprint: {
+            /**
+             * @example {
+             *       "SINGLE_CHOICE": 3,
+             *       "TRUE_FALSE": 2,
+             *       "ORDERING": 1
+             *     }
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /** @enum {string} */
+            difficulty?: "EASY" | "MEDIUM" | "HARD";
+        };
+        StudioGenerateRequest: {
+            sourceText: string;
+            blueprint: components["schemas"]["Blueprint"];
+        };
+        JobView: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
+            /** @enum {string} */
+            target: "NEW_PRACTICE_QUIZ" | "APPEND_TO_QUIZ";
+            /** Format: int32 */
+            totalSteps: number;
+            /** Format: int32 */
+            doneSteps: number;
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: int64 */
+            quizId: number;
+            error: string;
+        };
         AnswerSubmission: {
             /** Format: int64 */
             questionId: number;
@@ -286,35 +642,10 @@ export interface components {
             };
             explanation: string;
         };
-        Blueprint: {
-            /**
-             * @example {
-             *       "SINGLE_CHOICE": 3,
-             *       "TRUE_FALSE": 2,
-             *       "ORDERING": 1
-             *     }
-             */
-            counts: {
-                [key: string]: number;
-            };
-            /** @enum {string} */
-            difficulty?: "EASY" | "MEDIUM" | "HARD";
-        };
         GenerateQuizRequest: {
             title?: string;
             sourceText: string;
             blueprint: components["schemas"]["Blueprint"];
-        };
-        QuizSummary: {
-            /** Format: int64 */
-            id: number;
-            title: string;
-            /** Format: int32 */
-            questionCount: number;
-            /** Format: int32 */
-            totalPoints: number;
-            /** Format: date-time */
-            createdAt: string;
         };
         RegisterRequest: {
             /** Format: email */
@@ -376,6 +707,23 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        QuizSummary: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            /** @enum {string} */
+            visibility: "PRIVATE" | "PUBLIC";
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: int32 */
+            totalPoints: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         QuestionView: {
             /** Format: int64 */
             id: number;
@@ -394,9 +742,37 @@ export interface components {
             /** Format: int64 */
             id: number;
             title: string;
+            description: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            author: string;
             /** Format: int32 */
             totalPoints: number;
             questions: components["schemas"]["QuestionView"][];
+        };
+        CatalogQuiz: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            description: string;
+            author: string;
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: int32 */
+            totalPoints: number;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+        PageResponseCatalogQuiz: {
+            content: components["schemas"]["CatalogQuiz"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int32 */
+            totalPages: number;
         };
         MeResponse: {
             email: string;
@@ -449,6 +825,481 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuizRequest"];
+            };
+        };
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    updateQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthoringQuestion"];
+            };
+        };
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+        };
+    };
+    deleteQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                questionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuizRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    unpublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    addQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthoringQuestion"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+            /** @description Invalid question (all problems listed) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthoringQuestionView"];
+                };
+            };
+        };
+    };
+    publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    generate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudioGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+        };
+    };
+    duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
+    archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not an instructor, or not your quiz */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+            /** @description Not allowed in the quiz's current status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioQuiz"];
+                };
+            };
+        };
+    };
     submit: {
         parameters: {
             query?: never;
@@ -482,7 +1333,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptResult"];
                 };
             };
-            /** @description Quiz doesn't exist or isn't yours */
+            /** @description Quiz doesn't exist or isn't available to you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -493,7 +1344,7 @@ export interface operations {
             };
         };
     };
-    generate: {
+    generate_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -506,31 +1357,31 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Quiz created */
-            201: {
+            /** @description Job started */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizSummary"];
+                    "application/json": components["schemas"]["JobView"];
                 };
             };
-            /** @description Validation failed (e.g. text shorter than 200 characters, 0 or >20 questions) */
+            /** @description Validation failed (text 200-20000 characters, 1-20 questions) */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizSummary"];
+                    "application/json": components["schemas"]["JobView"];
                 };
             };
-            /** @description AI service failed or returned invalid output */
-            502: {
+            /** @description A generation job is already running for you */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizSummary"];
+                    "application/json": components["schemas"]["JobView"];
                 };
             };
         };
@@ -795,6 +1646,8 @@ export interface operations {
     list: {
         parameters: {
             query?: {
+                visibility?: "PRIVATE" | "PUBLIC";
+                status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -819,7 +1672,7 @@ export interface operations {
             };
         };
     };
-    get: {
+    get_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -839,7 +1692,7 @@ export interface operations {
                     "application/json": components["schemas"]["QuizDetail"];
                 };
             };
-            /** @description Quiz doesn't exist or isn't yours */
+            /** @description Quiz doesn't exist or isn't available to you */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -868,12 +1721,47 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Quiz doesn't exist or isn't yours */
+            /** @description Quiz doesn't exist or isn't available to you */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Learners have attempted it; archive instead */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    explore: {
+        parameters: {
+            query?: {
+                search?: string;
+                /** @description Zero-based page index (0..N) */
+                page?: number;
+                /** @description The size of the page to be returned */
+                size?: number;
+                /** @description Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported. */
+                sort?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResponseCatalogQuiz"];
+                };
             };
         };
     };
@@ -893,6 +1781,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
                 };
             };
         };

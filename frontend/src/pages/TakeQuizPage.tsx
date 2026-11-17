@@ -99,8 +99,14 @@ export default function TakeQuizPage() {
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground">
           <Link to="/"><ArrowLeft /> My quizzes</Link>
         </Button>
+        {quiz.data.status !== 'PUBLISHED' && (
+          <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            Preview: this quiz is {quiz.data.status.toLowerCase()}, so learners can't see it.
+          </p>
+        )}
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{quiz.data.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{questions.length} questions · {quiz.data.totalPoints} points</p>
+        {quiz.data.description && <p className="mt-1 text-muted-foreground">{quiz.data.description}</p>}
+        <p className="mt-1 text-sm text-muted-foreground">{questions.length} questions · {quiz.data.totalPoints} points · by {quiz.data.author}</p>
         {!result && (
           <div className="mt-4 space-y-2">
             <Progress value={(answeredCount / questions.length) * 100} aria-label="Quiz progress" />

@@ -21,6 +21,14 @@ spring:
       pageable:
         max-page-size: 50
   ai:
+    # Retry transient AI failures a little, but fail fast when the model is down
+    # (the default retries for minutes, leaving generation jobs hanging).
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 1s
+        multiplier: 2
+        max-interval: 5s
     ollama:
       base-url: ${OLLAMA_BASE_URL}
       chat:

@@ -7,8 +7,11 @@ import { PERMISSIONS } from '@/lib/permissions';
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const ExplorePage = lazy(() => import('@/pages/ExplorePage'));
 const TakeQuizPage = lazy(() => import('@/pages/TakeQuizPage'));
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'));
+const StudioPage = lazy(() => import('@/pages/studio/StudioPage'));
+const QuizBuilderPage = lazy(() => import('@/pages/studio/QuizBuilderPage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
@@ -20,8 +23,15 @@ export default function App() {
 
         <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route index element={<DashboardPage />} />
+          <Route path="explore" element={<ExplorePage />} />
           <Route path="quiz/:id" element={<TakeQuizPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="studio" element={
+            <RequirePermission permission={PERMISSIONS.QUIZ_AUTHOR}><StudioPage /></RequirePermission>
+          } />
+          <Route path="studio/:id" element={
+            <RequirePermission permission={PERMISSIONS.QUIZ_AUTHOR}><QuizBuilderPage /></RequirePermission>
+          } />
           <Route path="admin/users" element={
             <RequirePermission permission={PERMISSIONS.USER_READ}><UsersPage /></RequirePermission>
           } />

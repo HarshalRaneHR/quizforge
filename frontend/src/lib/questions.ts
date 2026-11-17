@@ -77,6 +77,17 @@ export const BLUEPRINT_PRESETS: { label: string; counts: Counts }[] = [
 export const totalOf = (counts: Counts) => Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
 
 /**
+ * Spreads `total` as evenly as possible over all types, e.g. 10 → three types get 2, four get 1.
+ * The leftover questions go to types picked at random, so repeated clicks vary which ones get the extra.
+ */
+export function equalCounts(total: number): Counts {
+  const types = QUESTION_TYPES.map(t => t.type);
+  const base = Math.floor(total / types.length);
+  const extra = new Set([...types].sort(() => Math.random() - 0.5).slice(0, total % types.length));
+  return Object.fromEntries(types.map(t => [t, Math.min(MAX_PER_TYPE, base + (extra.has(t) ? 1 : 0))])) as Counts;
+}
+
+/**
  * Spreads `total` questions randomly over all types: every type gets one first (as far as the total
  * allows, picked in random order) so the mix is varied, then the rest land on random types.
  */

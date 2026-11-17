@@ -1,4 +1,4 @@
-import { ChartLine, Compass, House, PencilRuler, Users, type LucideIcon } from 'lucide-react';
+import { ChartLine, Compass, House, PencilRuler, School, UsersRound, Users, type LucideIcon } from 'lucide-react';
 import { PERMISSIONS, type Permission } from '@/lib/permissions';
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; permission?: Permission };
@@ -11,12 +11,16 @@ export const NAV: NavSection[] = [
     items: [
       { to: '/', label: 'Home', icon: House, end: true },
       { to: '/explore', label: 'Explore', icon: Compass },
+      { to: '/classes', label: 'My classes', icon: UsersRound },
       { to: '/history', label: 'Progress', icon: ChartLine },
     ],
   },
   {
     label: 'Teach',
-    items: [{ to: '/studio', label: 'Studio', icon: PencilRuler, permission: PERMISSIONS.QUIZ_AUTHOR }],
+    items: [
+      { to: '/studio', label: 'Studio', icon: PencilRuler, permission: PERMISSIONS.QUIZ_AUTHOR },
+      { to: '/classrooms', label: 'Classrooms', icon: School, permission: PERMISSIONS.CLASSROOM_MANAGE },
+    ],
   },
   {
     label: 'Administration',
@@ -29,6 +33,7 @@ export function titleFor(pathname: string): string {
   if (pathname.startsWith('/quiz/')) return 'Take quiz';
   if (pathname.startsWith('/attempts/')) return 'Review attempt';
   if (pathname.startsWith('/studio/')) return 'Quiz builder';
+  if (pathname.startsWith('/classrooms/')) return 'Classroom';
   for (const section of NAV) {
     for (const item of section.items) {
       if (item.end ? pathname === item.to : pathname.startsWith(item.to)) return item.label;

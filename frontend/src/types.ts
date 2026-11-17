@@ -33,5 +33,11 @@ export type StudioQuiz = Schemas['StudioQuiz'];
 export type AuthoringQuestion = Schemas['AuthoringQuestion'];
 export type AuthoringQuestionView = Schemas['AuthoringQuestionView'];
 export type MatchPair = Schemas['MatchPair'];
+export type ClassroomSummary = Schemas['ClassroomSummary'];
+export type ClassroomDetail = Schemas['ClassroomDetail'];
+export type AssignmentView = Schemas['AssignmentView'];
+export type MyAssignment = Schemas['MyAssignment'];
+export type Gradebook = Schemas['Gradebook'];
+export type Progress = MyAssignment['progress'];
 
 export type Page<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };

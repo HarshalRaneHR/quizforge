@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Calendar, Compass, ListChecks, Play, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, Calendar, ClipboardList, Compass, ListChecks, Play, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/api/client';
 import { useAuth } from '@/auth/auth-context';
@@ -16,12 +16,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { AssignmentList } from '@/components/app/AssignmentList';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isFinished, useGenerationJob } from '@/hooks/use-generation-job';
 import { PERMISSIONS } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import type { JobView, Page, QuizSummary } from '@/types';
+import type { JobView, MyAssignment, Page, QuizSummary } from '@/types';
 
 const PAGE_SIZE = 9;
 
@@ -66,6 +67,23 @@ function GenerateQuizCard() {
         {jobId && <GenerationProgress job={job.data} onDismiss={() => setJobId(null)} />}
         <GenerateForm withTitle busy={start.isPending || running} onSubmit={values => start.mutate(values)} />
       </CardContent>
+    </Card>
+  );
+}
+
+/** Pending assignments from classrooms, soonest due first (hidden when there are none). */
+function AssignedCard() {
+  const assignments = useQuery({ queryKey: ['my-assignments'], queryFn: () => api.get<MyAssignment[]>('/assignments/me').then(r => r.data) });
+  const pending = (assignments.data ?? []).filter(a => a.progress !== 'COMPLETED');
+  if (pending.length === 0) return null;
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><ClipboardList className="size-5 text-primary" /> Assigned to you</CardTitle>
+        <CardDescription>{pending.length} quiz{pending.length === 1 ? '' : 'zes'} to do{pending.some(a => a.overdue) && ', some overdue'}.</CardDescription>
+        <CardAction><Button asChild variant="ghost" size="sm"><Link to="/classes">See all</Link></Button></CardAction>
+      </CardHeader>
+      <CardContent><AssignmentList items={pending} limit={3} /></CardContent>
     </Card>
   );
 }
@@ -141,6 +159,8 @@ export default function DashboardPage() {
       <PageHeader title={<>Hi, <span className="capitalize">{firstName}</span> 👋</>}
                   description="Make a practice quiz from your notes, or explore quizzes from instructors."
                   actions={<Button asChild variant="outline"><Link to="/explore"><Compass /> Explore quizzes</Link></Button>} />
+
+      <AssignedCard />
 
       {can(PERMISSIONS.QUIZ_GENERATE) && <GenerateQuizCard />}
 

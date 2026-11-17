@@ -83,6 +83,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/classrooms/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A classroom I own or belong to
+         * @description Members and join code only for the owner.
+         */
+        get: operations["get_1"];
+        /** Rename / describe a classroom */
+        put: operations["update_1"];
+        post?: never;
+        /**
+         * Delete a classroom
+         * @description Removes memberships and assignments; quizzes and attempts are kept.
+         */
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/attempts/{attemptId}/answers/{questionId}": {
         parameters: {
             query?: never;
@@ -297,6 +322,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/classrooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Classrooms I teach */
+        get: operations["owned"];
+        put?: never;
+        /** Create a classroom (gets a join code) */
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave a classroom */
+        post: operations["leave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/join-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate a new join code */
+        post: operations["regenerateCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign one of my published quizzes
+         * @description dueAt is optional (ISO-8601).
+         */
+        post: operations["assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join a classroom with its code */
+        post: operations["join"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -472,14 +586,14 @@ export interface paths {
          * Quiz landing page
          * @description Title, settings and your attempts so far. Questions are only returned by starting an attempt.
          */
-        get: operations["get_1"];
+        get: operations["get_2"];
         put?: never;
         post?: never;
         /**
          * Delete a quiz and its attempts
          * @description Owner (or quiz:manage-all). Quizzes learners have attempted must be archived instead.
          */
-        delete: operations["delete"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -542,6 +656,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/classrooms/{id}/gradebook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gradebook: learners × assignments (best score, attempts, progress) */
+        get: operations["gradebook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/gradebook.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gradebook as CSV */
+        get: operations["gradebookCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/joined": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Classrooms I've joined */
+        get: operations["joined"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/attempts/{attemptId}": {
         parameters: {
             query?: never;
@@ -553,7 +718,7 @@ export interface paths {
          * Review a finished attempt
          * @description Per-question results are omitted when the quiz shows learners their score only.
          */
-        get: operations["get_2"];
+        get: operations["get_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -574,6 +739,60 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assignments/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quizzes assigned to me
+         * @description Across all my classrooms, soonest due first, with my progress.
+         */
+        get: operations["myAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a learner from the classroom */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/classrooms/{id}/assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an assignment */
+        delete: operations["unassign"];
         options?: never;
         head?: never;
         patch?: never;
@@ -654,6 +873,43 @@ export interface components {
         };
         ReorderRequest: {
             questionIds: number[];
+        };
+        SaveClassroomRequest: {
+            name: string;
+            description?: string;
+        };
+        AssignmentView: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            quizId: number;
+            quizTitle: string;
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: int32 */
+            totalPoints: number;
+            /** Format: date-time */
+            dueAt: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ClassroomDetail: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            description: string;
+            owner: string;
+            owned: boolean;
+            joinCode: string;
+            members: components["schemas"]["MemberView"][];
+            assignments: components["schemas"]["AssignmentView"][];
+        };
+        MemberView: {
+            /** Format: int64 */
+            userId: number;
+            email: string;
+            /** Format: date-time */
+            joinedAt: string;
         };
         SaveAnswerRequest: {
             response: {
@@ -744,6 +1000,15 @@ export interface components {
             title?: string;
             sourceText: string;
             blueprint: components["schemas"]["Blueprint"];
+        };
+        AssignRequest: {
+            /** Format: int64 */
+            quizId: number;
+            /** Format: date-time */
+            dueAt?: string;
+        };
+        JoinRequest: {
+            code: string;
         };
         RegisterRequest: {
             /** Format: email */
@@ -911,6 +1176,45 @@ export interface components {
             role: string;
             permissions: string[];
         };
+        ClassroomSummary: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            description: string;
+            owner: string;
+            /** Format: int32 */
+            memberCount: number;
+            /** Format: int32 */
+            assignmentCount: number;
+            joinCode: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Gradebook: {
+            /** Format: int64 */
+            classroomId: number;
+            classroomName: string;
+            assignments: components["schemas"]["AssignmentView"][];
+            rows: components["schemas"]["GradebookRow"][];
+        };
+        GradebookCell: {
+            /** Format: int64 */
+            assignmentId: number;
+            /** @enum {string} */
+            progress: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+            /** Format: int32 */
+            bestPercentage: number;
+            /** Format: int32 */
+            attempts: number;
+        };
+        GradebookRow: {
+            /** Format: int64 */
+            userId: number;
+            email: string;
+            cells: components["schemas"]["GradebookCell"][];
+            /** Format: int32 */
+            averagePercentage: number;
+        };
         AttemptSummary: {
             /** Format: int64 */
             id: number;
@@ -939,6 +1243,27 @@ export interface components {
             totalElements: number;
             /** Format: int32 */
             totalPages: number;
+        };
+        MyAssignment: {
+            /** Format: int64 */
+            assignmentId: number;
+            /** Format: int64 */
+            classroomId: number;
+            classroomName: string;
+            /** Format: int64 */
+            quizId: number;
+            quizTitle: string;
+            /** Format: int32 */
+            questionCount: number;
+            /** Format: date-time */
+            dueAt: string;
+            overdue: boolean;
+            /** @enum {string} */
+            progress: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+            /** Format: int32 */
+            bestPercentage: number;
+            /** Format: int32 */
+            attempts: number;
         };
         PageResponseUserView: {
             content: components["schemas"]["UserView"][];
@@ -1164,6 +1489,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StudioQuiz"];
                 };
+            };
+        };
+    };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomDetail"];
+                };
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveClassroomRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomDetail"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1579,6 +1972,142 @@ export interface operations {
             };
         };
     };
+    owned: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomSummary"][];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveClassroomRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomDetail"];
+                };
+            };
+        };
+    };
+    leave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    regenerateCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomDetail"];
+                };
+            };
+        };
+    };
+    assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentView"];
+                };
+            };
+        };
+    };
+    join: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomDetail"];
+                };
+            };
+        };
+    };
     register: {
         parameters: {
             query?: never;
@@ -1887,7 +2416,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1909,7 +2438,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2013,7 +2542,71 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    gradebook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Gradebook"];
+                };
+            };
+        };
+    };
+    gradebookCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    joined: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassroomSummary"][];
+                };
+            };
+        };
+    };
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2059,6 +2652,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PageResponseAttemptSummary"];
                 };
+            };
+        };
+    };
+    myAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAssignment"][];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unassign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                assignmentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

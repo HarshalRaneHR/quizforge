@@ -7,7 +7,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +30,21 @@ public class AdminController {
     private final AdminUserService adminUsers;
 
     public record ChangeRoleRequest(@NotNull Role role) {}
+
+    public record CreateUserRequest(
+            @NotBlank @Email String email,
+            @NotBlank @Size(min = 8, max = 72, message = "must be 8-72 characters") String password,
+            @NotNull Role role) {}
+
+    @Operation(summary = "Create a user with a role", description = "Requires user:manage. E.g. add an instructor directly.")
+    @ApiResponse(responseCode = "201", description = "User created")
+    @ApiResponse(responseCode = "400", description = "Validation failed")
+    @ApiResponse(responseCode = "409", description = "Email already registered")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserView createUser(@Valid @RequestBody CreateUserRequest req) {
+        return adminUsers.createUser(req.email(), req.password(), req.role());
+    }
 
     @Operation(summary = "Search users", description = "Filter by email text and/or role. Requires user:read.")
     @ApiResponse(responseCode = "200", description = "A page of users")

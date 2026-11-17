@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 class AdminUserServiceTest {
 
     @Mock UserRepository users;
+    @Mock org.springframework.security.crypto.password.PasswordEncoder encoder;
     @InjectMocks AdminUserService service;
 
     private static User user(long id, String email, Role role) {
@@ -45,6 +46,27 @@ class AdminUserServiceTest {
 
         assertThatThrownBy(() -> service.changeRole("admin@test.com", 1L, Role.LEARNER))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void createsInstructorWithHashedPassword() {
+        when(users.existsByEmail("teacher@test.com")).thenReturn(false);
+        when(encoder.encode("secret123")).thenReturn("HASH");
+        when(users.save(org.mockito.ArgumentMatchers.any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var view = service.createUser("  Teacher@Test.com ", "secret123", Role.INSTRUCTOR);
+
+        assertThat(view.email()).isEqualTo("teacher@test.com");
+        assertThat(view.role()).isEqualTo("INSTRUCTOR");
+        org.mockito.Mockito.verify(users).save(org.mockito.ArgumentMatchers.argThat(u -> "HASH".equals(u.getPasswordHash())));
+    }
+
+    @Test
+    void createRejectsDuplicateEmail() {
+        when(users.existsByEmail("dup@test.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.createUser("dup@test.com", "secret123", Role.LEARNER))
+                .isInstanceOf(com.harshal.quizforge.common.ConflictException.class);
     }
 
     @Test

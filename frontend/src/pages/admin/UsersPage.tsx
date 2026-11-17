@@ -20,6 +20,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { ROLE_LABELS } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 import { ROLES, type Page, type Role, type UserView } from '@/types';
+import { AddUserDialog } from './AddUserDialog';
 
 const ALL = 'ALL';
 
@@ -63,7 +64,8 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" description="Search accounts and manage what each person can do." />
+      <PageHeader title="Users" description="Search accounts and manage what each person can do."
+                  actions={canManage && <AddUserDialog />} />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">

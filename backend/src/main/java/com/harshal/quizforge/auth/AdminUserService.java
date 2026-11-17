@@ -1,6 +1,8 @@
 package com.harshal.quizforge.auth;
 
 import com.harshal.quizforge.common.BadRequestException;
+import com.harshal.quizforge.common.ConflictException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.harshal.quizforge.common.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,7 @@ import static com.harshal.quizforge.auth.UserRepository.Specs.hasRole;
 public class AdminUserService {
 
     private final UserRepository users;
+    private final PasswordEncoder encoder;
 
     public record UserView(Long id, String email, String role, Instant createdAt) {
         static UserView of(User u) {
@@ -30,6 +33,21 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public Page<UserView> search(String emailFilter, Role roleFilter, Pageable pageable) {
         return users.findAll(emailContains(emailFilter).and(hasRole(roleFilter)), pageable).map(UserView::of);
+    }
+
+    /** Admin creates an account directly (e.g. an instructor) with a temporary password. */
+    @PreAuthorize("hasAuthority('user:manage')")
+    @Transactional
+    public UserView createUser(String email, String password, Role role) {
+        String normalized = email.trim().toLowerCase();
+        if (users.existsByEmail(normalized)) {
+            throw new ConflictException("Email already registered");
+        }
+        User user = new User();
+        user.setEmail(normalized);
+        user.setPasswordHash(encoder.encode(password));
+        user.setRole(role);
+        return UserView.of(users.save(user));
     }
 
     @PreAuthorize("hasAuthority('user:manage')")

@@ -1,0 +1,4 @@
+# Normalise line endings in the repo (LF), let Git convert on checkout.
+* text=auto
+*.cmd text eol=crlf
+mvnw text eol=lf

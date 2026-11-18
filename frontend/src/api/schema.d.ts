@@ -1244,6 +1244,7 @@ export interface components {
             /** Format: int64 */
             openAttemptId: number;
             canAuthor: boolean;
+            builtIn: boolean;
         };
         CatalogQuiz: {
             /** Format: int64 */
@@ -1257,6 +1258,7 @@ export interface components {
             totalPoints: number;
             /** Format: date-time */
             publishedAt: string;
+            builtIn: boolean;
         };
         PageResponseCatalogQuiz: {
             content: components["schemas"]["CatalogQuiz"][];

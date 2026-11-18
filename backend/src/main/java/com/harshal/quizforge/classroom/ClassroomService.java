@@ -102,7 +102,8 @@ public class ClassroomService {
     public AssignmentView assign(CurrentUser user, Long id, AssignRequest req) {
         Classroom c = managed(user, id);
         Quiz quiz = quizzes.findById(req.quizId()).orElseThrow(() -> new NotFoundException("Quiz not found"));
-        boolean ownsQuiz = quiz.getOwner().getEmail().equals(user.email()) || user.can(Permission.QUIZ_MANAGE_ALL);
+        // Your own quizzes, or any built-in library quiz.
+        boolean ownsQuiz = quiz.isBuiltIn() || quiz.getOwner().getEmail().equals(user.email()) || user.can(Permission.QUIZ_MANAGE_ALL);
         if (!ownsQuiz) throw new NotFoundException("Quiz not found");
         if (!quiz.isListed()) throw new BadRequestException("Only published quizzes can be assigned");
         if (c.getAssignments().stream().anyMatch(a -> a.getQuiz().getId().equals(quiz.getId()))) {

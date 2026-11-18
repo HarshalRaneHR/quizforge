@@ -1,0 +1,197 @@
+{
+  "slug": "java-fundamentals",
+  "title": "Java Fundamentals",
+  "description": "Core Java: types, classes, collections, exceptions and the JVM. 20 questions across all question types.",
+  "passPercentage": 60,
+  "questions": [
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "Which keyword prevents a class from being subclassed?",
+      "options": ["final", "static", "abstract", "transient"],
+      "correctIndexes": [0],
+      "explanation": "A final class cannot be extended (String is a well-known example)."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "What is the default value of an int field that is never assigned?",
+      "options": ["0", "null", "-1", "It doesn't compile"],
+      "correctIndexes": [0],
+      "explanation": "Numeric fields default to 0; only local variables must be assigned before use."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "Which collection does NOT allow duplicate elements?",
+      "options": ["ArrayList", "HashSet", "LinkedList", "ArrayDeque"],
+      "correctIndexes": [1],
+      "explanation": "A Set (such as HashSet) stores each element at most once."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "What does JVM stand for?",
+      "options": [
+        "Java Virtual Machine",
+        "Java Variable Method",
+        "Joint Virtual Memory",
+        "Java Verified Module"
+      ],
+      "correctIndexes": [0],
+      "explanation": "The Java Virtual Machine runs compiled Java bytecode on any platform."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "Which method signature is the entry point of a standalone Java program?",
+      "options": [
+        "public static void main(String[] args)",
+        "public void start()",
+        "static int run(String args)",
+        "public static void init()"
+      ],
+      "correctIndexes": [0],
+      "explanation": "The JVM looks for public static void main(String[] args) to start a program."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "prompt": "Which exceptions must be either caught or declared with throws?",
+      "options": [
+        "Checked exceptions",
+        "Unchecked exceptions",
+        "Errors such as OutOfMemoryError",
+        "Any RuntimeException"
+      ],
+      "correctIndexes": [0],
+      "explanation": "The compiler enforces handling of checked exceptions like IOException."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "prompt": "String objects in Java are...",
+      "options": [
+        "Immutable",
+        "Mutable",
+        "Primitive values",
+        "Always stored on the stack"
+      ],
+      "correctIndexes": [0],
+      "explanation": "A String can't change after creation; operations like concat return a new String."
+    },
+    {
+      "type": "SINGLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "Which keyword makes a class inherit from another class?",
+      "options": ["extends", "implements", "inherits", "super"],
+      "correctIndexes": [0],
+      "explanation": "extends is for class inheritance; implements is for interfaces."
+    },
+    {
+      "type": "MULTIPLE_CHOICE",
+      "difficulty": "EASY",
+      "prompt": "Which of these are primitive types?",
+      "options": ["int", "String", "boolean", "Integer", "double"],
+      "correctIndexes": [0, 2, 4],
+      "explanation": "int, boolean and double are primitives; String and Integer are classes."
+    },
+    {
+      "type": "MULTIPLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "prompt": "Which are access modifiers in Java?",
+      "options": ["public", "protected", "private", "internal"],
+      "correctIndexes": [0, 1, 2],
+      "explanation": "Java has public, protected, private and package-private (no keyword); internal is Kotlin/C#."
+    },
+    {
+      "type": "MULTIPLE_CHOICE",
+      "difficulty": "MEDIUM",
+      "prompt": "Which interfaces belong to the Java Collections Framework?",
+      "options": ["List", "Set", "Map", "Runnable"],
+      "correctIndexes": [0, 1, 2],
+      "explanation": "List, Set and Map are collection interfaces; Runnable is for threads."
+    },
+    {
+      "type": "TRUE_FALSE",
+      "difficulty": "EASY",
+      "prompt": "A Java class can extend more than one class.",
+      "answer": false,
+      "explanation": "Java has single class inheritance; a class can implement many interfaces instead."
+    },
+    {
+      "type": "TRUE_FALSE",
+      "difficulty": "MEDIUM",
+      "prompt": "The fields of a record class are final.",
+      "answer": true,
+      "explanation": "Record components become private final fields, which makes records shallowly immutable."
+    },
+    {
+      "type": "TRUE_FALSE",
+      "difficulty": "MEDIUM",
+      "prompt": "The == operator compares the contents of two String objects.",
+      "answer": false,
+      "explanation": "== compares references; use equals() to compare contents."
+    },
+    {
+      "type": "FILL_BLANK",
+      "difficulty": "EASY",
+      "prompt": "The ___ keyword creates a new object instance.",
+      "blanks": [["new"]],
+      "explanation": "new allocates an object and calls its constructor."
+    },
+    {
+      "type": "FILL_BLANK",
+      "difficulty": "EASY",
+      "prompt": "A method with the same name as its class and no return type is called a ___.",
+      "blanks": [["constructor"]],
+      "explanation": "Constructors initialise new objects."
+    },
+    {
+      "type": "NUMERIC",
+      "difficulty": "MEDIUM",
+      "prompt": "How many bits does a Java int use?",
+      "value": 32,
+      "tolerance": 0,
+      "unit": "bits",
+      "explanation": "int is a 32-bit signed integer; long is 64-bit."
+    },
+    {
+      "type": "ORDERING",
+      "difficulty": "MEDIUM",
+      "prompt": "Put the steps from source code to a running program in order.",
+      "items": [
+        "Write the .java source file",
+        "Compile it with javac into bytecode (.class)",
+        "The class loader loads the classes into the JVM",
+        "The JVM executes the bytecode"
+      ],
+      "explanation": "Source is compiled to bytecode, which the JVM loads and runs (interpreted and JIT-compiled)."
+    },
+    {
+      "type": "ORDERING",
+      "difficulty": "EASY",
+      "prompt": "Order these integer types from smallest to largest.",
+      "items": ["byte", "short", "int", "long"],
+      "explanation": "byte is 8 bits, short 16, int 32 and long 64."
+    },
+    {
+      "type": "MATCHING",
+      "difficulty": "MEDIUM",
+      "prompt": "Match each keyword with what it means.",
+      "pairs": [
+        { "left": "static", "right": "Belongs to the class, not an instance" },
+        {
+          "left": "final",
+          "right": "Can't be reassigned, overridden or extended"
+        },
+        { "left": "abstract", "right": "Must be implemented by a subclass" },
+        {
+          "left": "synchronized",
+          "right": "Only one thread runs it at a time per lock"
+        }
+      ],
+      "explanation": "These modifiers control ownership, mutability, inheritance and thread safety."
+    }
+  ]
+}

@@ -163,7 +163,9 @@ public class StudioService {
     /** New editable draft with copies of all questions — the way to change a quiz learners have taken. */
     @Transactional
     public StudioQuiz duplicate(CurrentUser user, Long id) {
-        Quiz source = editable(user, id);
+        // Any quiz you can open can be copied (e.g. a built-in library quiz) — the copy is yours to edit.
+        Quiz source = quizRepo.findWithQuestionsById(id).orElseThrow(() -> new NotFoundException("Quiz not found"));
+        if (!QuizPolicy.canTake(source, user)) throw new NotFoundException("Quiz not found");
         User owner = userRepo.findByEmail(user.email()).orElseThrow(() -> new NotFoundException("User not found"));
         Quiz copy = new Quiz();
         String title = "Copy of " + source.getTitle();
@@ -182,6 +184,7 @@ public class StudioService {
     private Quiz editable(CurrentUser user, Long id) {
         Quiz quiz = quizRepo.findWithQuestionsById(id).orElseThrow(() -> new NotFoundException("Quiz not found"));
         if (!QuizPolicy.canTake(quiz, user)) throw new NotFoundException("Quiz not found");
+        if (quiz.isBuiltIn()) throw new ForbiddenException("Built-in library quizzes are read-only. Duplicate it to make your own version.");
         if (!QuizPolicy.canAuthor(quiz, user)) throw new ForbiddenException("You can't edit this quiz");
         if (quiz.getVisibility() != Visibility.PUBLIC) throw new BadRequestException("Practice quizzes can't be edited in the Studio");
         return quiz;

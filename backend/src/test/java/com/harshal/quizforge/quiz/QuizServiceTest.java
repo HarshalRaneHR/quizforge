@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class QuizServiceTest {
+public class QuizServiceTest {
 
     private QuizRepository quizRepo;
     private UserRepository userRepo;
@@ -34,7 +34,8 @@ class QuizServiceTest {
     private QuizService service;
     private final QuestionFactory factory = new QuestionFactory(new Random(7));
 
-    static QuestionTypeRegistry registry() {
+    /** All seven handlers, for tests that need real validation and grading. */
+    public static QuestionTypeRegistry registry() {
         return new QuestionTypeRegistry(List.of(new SingleChoiceHandler(), new MultipleChoiceHandler(),
                 new TrueFalseHandler(), new FillBlankHandler(), new NumericHandler(), new OrderingHandler(), new MatchingHandler()));
     }

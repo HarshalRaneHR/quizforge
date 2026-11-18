@@ -61,8 +61,9 @@ public final class QuizDtos {
                               int totalPoints, Instant createdAt, Instant updatedAt) {}
 
     /** A published quiz in the Explore catalog. */
+    /** {@code builtIn}: part of the QuizForge library (read-only, can't be deleted). */
     public record CatalogQuiz(Long id, String title, String description, String author, int questionCount,
-                              int totalPoints, Instant publishedAt) {}
+                              int totalPoints, Instant publishedAt, boolean builtIn) {}
 
     /**
      * Quiz landing page: everything except the questions — those are only sent once an attempt starts
@@ -70,7 +71,7 @@ public final class QuizDtos {
      */
     public record QuizDetail(Long id, String title, String description, QuizStatus status, String author,
                              int questionCount, int totalPoints, Settings settings,
-                             int attemptsUsed, Integer attemptsLeft, Long openAttemptId, boolean canAuthor) {}
+                             int attemptsUsed, Integer attemptsLeft, Long openAttemptId, boolean canAuthor, boolean builtIn) {}
 
     // ---------------------------------------------------------------- attempts
 

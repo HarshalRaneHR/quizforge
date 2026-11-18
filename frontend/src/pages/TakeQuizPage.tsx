@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, ChartLine, CircleX, Cloud, CloudOff, Eye, Flag, ListChecks, LoaderCircle, Pencil, Play,
+  ArrowLeft, ChartLine, CircleX, Cloud, CloudOff, Copy, Eye, Flag, ListChecks, LoaderCircle, Pencil, Play,
   RotateCcw, Send, Shuffle, Target, Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/api/client';
+import { useAuth } from '@/auth/auth-context';
 import { EmptyState } from '@/components/app/EmptyState';
+import { LIBRARY_AUTHOR, LibraryBadge } from '@/components/app/LibraryBadge';
 import { AttemptResultView, PointsBadge } from '@/components/quiz/AttemptResultView';
 import { QuestionInput } from '@/components/quiz/QuestionInput';
 import {
@@ -19,16 +21,33 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PERMISSIONS } from '@/lib/permissions';
 import { initialResponse, isAnswered, TYPE_ICON, TYPE_LABEL, type Response } from '@/lib/questions';
 import { cn } from '@/lib/utils';
-import type { AttemptResult, AttemptSession, QuizDetail } from '@/types';
+import type { AttemptResult, AttemptSession, QuizDetail, StudioQuiz } from '@/types';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const AUTOSAVE_DELAY_MS = 700;
 
 // ---------------------------------------------------------------- landing
 
+/** Instructors can copy any quiz they can open (e.g. a library quiz) into an editable Studio draft. */
+function CopyToStudioButton({ quizId }: { quizId: number }) {
+  const navigate = useNavigate();
+  const copy = useMutation({
+    mutationFn: () => api.post<StudioQuiz>(`/studio/quizzes/${quizId}/duplicate`).then(r => r.data),
+    onSuccess: q => { toast.success('Copied to your Studio as a draft'); navigate(`/studio/${q.id}`); },
+    onError: e => toast.error('Could not copy the quiz', { description: errorMessage(e) }),
+  });
+  return (
+    <Button variant="outline" disabled={copy.isPending} onClick={() => copy.mutate()}>
+      {copy.isPending ? <LoaderCircle className="animate-spin" /> : <Copy />} Make an editable copy
+    </Button>
+  );
+}
+
 function Landing({ quiz, onStart, starting }: { quiz: QuizDetail; onStart: () => void; starting: boolean }) {
+  const { can } = useAuth();
   const s = quiz.settings;
   const left = quiz.attemptsLeft ?? null;
   const resume = !!quiz.openAttemptId;
@@ -42,8 +61,12 @@ function Landing({ quiz, onStart, starting }: { quiz: QuizDetail; onStart: () =>
   return (
     <Card>
       <CardHeader>
+        {quiz.builtIn && <div><LibraryBadge /></div>}
         <CardTitle className="text-2xl">{quiz.title}</CardTitle>
-        <CardDescription>{quiz.description || `By ${quiz.author}`}</CardDescription>
+        <CardDescription>
+          {quiz.description && <span className="block">{quiz.description}</span>}
+          <span className="block">By {quiz.builtIn ? LIBRARY_AUTHOR : quiz.author}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <ul className="grid gap-2 sm:grid-cols-2">
@@ -62,6 +85,7 @@ function Landing({ quiz, onStart, starting }: { quiz: QuizDetail; onStart: () =>
       </CardContent>
       <CardFooter className="flex-wrap justify-end gap-2 border-t">
         {quiz.canAuthor && <Button asChild variant="outline"><Link to={`/studio/${quiz.id}`}><Pencil /> Edit in Studio</Link></Button>}
+        {quiz.builtIn && can(PERMISSIONS.QUIZ_AUTHOR) && <CopyToStudioButton quizId={quiz.id} />}
         {left === 0 && !resume ? (
           <Button disabled>No attempts left</Button>
         ) : (

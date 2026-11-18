@@ -16,6 +16,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long>, JpaSpecificat
     @EntityGraph(attributePaths = "owner")
     Page<Quiz> findAll(Specification<Quiz> spec, Pageable pageable);
 
+    boolean existsByBuiltInSlug(String slug);
+
     // One query for quiz + owner + questions.
     @EntityGraph(attributePaths = {"owner", "questions"})
     Optional<Quiz> findWithQuestionsById(Long id);

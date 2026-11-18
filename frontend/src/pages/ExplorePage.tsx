@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Compass, ListChecks, Play, Search, UserRound } from 'lucide-react';
 import { api, errorMessage } from '@/api/client';
 import { EmptyState } from '@/components/app/EmptyState';
+import { LIBRARY_AUTHOR, LibraryBadge } from '@/components/app/LibraryBadge';
 import { PageHeader } from '@/components/app/PageHeader';
 import { Pagination } from '@/components/app/Pagination';
 import { Badge } from '@/components/ui/badge';
@@ -51,13 +52,14 @@ export default function ExplorePage() {
               <li key={q.id} className="flex">
                 <Card className="w-full gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md">
                   <CardHeader>
+                    {q.builtIn && <div><LibraryBadge /></div>}
                     <CardTitle className="line-clamp-2 leading-snug">{q.title}</CardTitle>
                     {q.description && <CardDescription className="line-clamp-2">{q.description}</CardDescription>}
                   </CardHeader>
                   <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <Badge variant="secondary"><ListChecks /> {q.questionCount} questions</Badge>
                     <span>{q.totalPoints} pts</span>
-                    <span className="flex min-w-0 items-center gap-1"><UserRound className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{q.author}</span></span>
+                    <span className="flex min-w-0 items-center gap-1"><UserRound className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{q.builtIn ? LIBRARY_AUTHOR : q.author}</span></span>
                   </CardContent>
                   <CardFooter className="mt-auto">
                     <Button asChild size="sm"><Link to={`/quiz/${q.id}`}><Play /> Start quiz</Link></Button>

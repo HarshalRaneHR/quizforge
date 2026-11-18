@@ -73,6 +73,39 @@ class QuizForgeIntegrationTest {
 
     // ---------------------------------------------------------------- tests
 
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    void builtInLibraryIsVisibleReadOnlyAndUndeletable() throws Exception {
+        String admin = login("admin@test.com", "adminpass123");
+        String learner = register(unique("learner"));
+
+        // Seeded at startup: 5 quizzes of 20 questions, listed in Explore for everyone
+        MvcResult explore = mvc.perform(get("/api/quizzes/explore?size=50").header("Authorization", "Bearer " + learner))
+                .andExpect(status().isOk()).andReturn();
+        List<Integer> libraryIds = JsonPath.read(explore.getResponse().getContentAsString(), "$.content[?(@.builtIn == true)].id");
+        List<Integer> counts = JsonPath.read(explore.getResponse().getContentAsString(), "$.content[?(@.builtIn == true)].questionCount");
+        assertThat(libraryIds).hasSize(5);
+        assertThat(counts).containsOnly(20);
+        long javaQuiz = libraryIds.getFirst();
+
+        // Not even an admin can delete or edit it through the API
+        mvc.perform(delete("/api/quizzes/" + javaQuiz).header("Authorization", "Bearer " + admin)).andExpect(status().isConflict());
+        mvc.perform(put("/api/studio/quizzes/" + javaQuiz).header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"hacked\"}")).andExpect(status().isForbidden());
+
+        // ...but it can be duplicated into an editable draft
+        mvc.perform(post("/api/studio/quizzes/" + javaQuiz + "/duplicate").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.questionCount").value(20));
+
+        // Last line of defence: the database trigger refuses a raw DELETE that bypasses the API
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update("DELETE FROM quiz WHERE id = ?", javaQuiz))
+                .hasMessageContaining("cannot be deleted");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM quiz WHERE built_in_slug IS NOT NULL", Integer.class)).isEqualTo(5);
+    }
+
     @Test
     void healthIsPublicButApiRequiresAuthentication() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));

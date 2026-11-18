@@ -75,7 +75,7 @@ public class QuizService {
     public Page<CatalogQuiz> explore(String search, Pageable pageable) {
         return quizRepo.findAll(listed().and(titleContains(search)), pageable)
                 .map(q -> new CatalogQuiz(q.getId(), q.getTitle(), q.getDescription(), q.getOwner().getEmail(),
-                        q.getQuestionCount(), q.getTotalPoints(), q.getPublishedAt()));
+                        q.getQuestionCount(), q.getTotalPoints(), q.getPublishedAt(), q.isBuiltIn()));
     }
 
     /** Landing page before starting: settings and my attempts so far (no questions). */
@@ -87,7 +87,7 @@ public class QuizService {
                 .map(Attempt::getId).orElse(null);
         return new QuizDetail(quiz.getId(), quiz.getTitle(), quiz.getDescription(), quiz.getStatus(),
                 quiz.getOwner().getEmail(), quiz.getQuestionCount(), quiz.getTotalPoints(), Settings.of(quiz.getSettings()),
-                (int) used, attemptsLeft(user, quiz), openId, QuizPolicy.canAuthor(quiz, user));
+                (int) used, attemptsLeft(user, quiz), openId, QuizPolicy.canEdit(quiz, user), quiz.isBuiltIn());
     }
 
     /** Remaining attempts; null = unlimited. Authors previewing their own quiz are never limited. */
@@ -102,6 +102,7 @@ public class QuizService {
     public void delete(CurrentUser user, Long id) {
         Quiz quiz = load(id);
         if (!QuizPolicy.canTake(quiz, user)) throw new NotFoundException("Quiz not found");
+        if (quiz.isBuiltIn()) throw new ConflictException("Built-in library quizzes can't be deleted");
         if (!QuizPolicy.canDelete(quiz, user)) throw new ForbiddenException("Only the owner can delete this quiz");
         boolean othersAttempted = attemptRepo.existsByQuizIdAndUserEmailNot(id, quiz.getOwner().getEmail());
         if (othersAttempted && !user.can(com.harshal.quizforge.auth.Permission.QUIZ_MANAGE_ALL)) {

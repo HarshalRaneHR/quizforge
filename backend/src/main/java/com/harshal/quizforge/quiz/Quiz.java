@@ -39,6 +39,10 @@ public class Quiz {
     @Embedded
     private QuizSettings settings = new QuizSettings();
 
+    /** Set only for built-in library quizzes: they are read-only and can never be deleted. */
+    @Column(unique = true, length = 80)
+    private String builtInSlug;
+
     // Stored so list pages don't load every question (avoids N+1).
     private int questionCount;
 
@@ -75,6 +79,10 @@ public class Quiz {
         questionCount = questions.size();
         totalPoints = questions.stream().mapToInt(Question::getPoints).sum();
         updatedAt = Instant.now();
+    }
+
+    public boolean isBuiltIn() {
+        return builtInSlug != null;
     }
 
     public boolean isDraft() {

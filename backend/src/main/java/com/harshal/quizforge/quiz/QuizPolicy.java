@@ -24,7 +24,13 @@ public final class QuizPolicy {
         return (isOwner(quiz, user) && user.can(Permission.QUIZ_AUTHOR)) || user.can(Permission.QUIZ_MANAGE_ALL);
     }
 
+    /** Change questions, settings or lifecycle. Built-in library quizzes are read-only for everyone. */
+    public static boolean canEdit(Quiz quiz, CurrentUser user) {
+        return !quiz.isBuiltIn() && canAuthor(quiz, user);
+    }
+
+    /** Built-in library quizzes can never be deleted, not even by an admin. */
     public static boolean canDelete(Quiz quiz, CurrentUser user) {
-        return isOwner(quiz, user) || user.can(Permission.QUIZ_MANAGE_ALL);
+        return !quiz.isBuiltIn() && (isOwner(quiz, user) || user.can(Permission.QUIZ_MANAGE_ALL));
     }
 }

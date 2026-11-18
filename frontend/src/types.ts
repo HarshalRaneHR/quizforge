@@ -14,7 +14,8 @@ export type AuthResponse = WithRole<Schemas['AuthResponse']>;
 export type UserView = WithRole<Schemas['UserView']>;
 export type AccountState = UserView['status'];
 export type CreatedUser = { user: UserView; temporaryPassword: string };
-export type PasswordReset = { user: UserView; temporaryPassword: string };
+/** temporaryPassword is null when the admin typed the password themselves. */
+export type PasswordReset = { user: UserView; temporaryPassword: string | null };
 export type AuthConfig = Schemas['AuthConfig'];
 export type MeResponse = WithRole<Schemas['MeResponse']>;
 export type PermissionName = Schemas['UserView']['permissions'][number];

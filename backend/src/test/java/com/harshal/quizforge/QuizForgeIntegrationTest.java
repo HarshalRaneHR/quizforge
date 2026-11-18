@@ -231,6 +231,16 @@ class QuizForgeIntegrationTest {
                 .getResponse().getStatus()).isEqualTo(401);
         firstLogin(email, newTemporary, "my-own-pass-2");
 
+        // Or the admin sets a password directly, without forcing a change: it works straight away
+        MvcResult direct = send("/api/admin/users/" + id + "/reset-password", admin,
+                "{\"password\":\"set-by-admin-1\",\"requireChange\":false}");
+        assertThat(direct.getResponse().getStatus()).isEqualTo(200);
+        assertThat((String) JsonPath.read(direct.getResponse().getContentAsString(), "$.temporaryPassword")).isNull();
+        mvc.perform(get("/api/quizzes/explore").header("Authorization", "Bearer " + login(email, "set-by-admin-1")))
+                .andExpect(status().isOk());
+        assertThat(send("/api/admin/users/" + id + "/reset-password", admin, "{\"password\":\"short\"}")
+                .getResponse().getStatus()).isEqualTo(400);
+
         // Admins can't lock themselves out
         long adminId = ((Number) JsonPath.read(mvc.perform(get("/api/admin/users?search=admin@test.com")
                 .header("Authorization", "Bearer " + admin)).andReturn().getResponse().getContentAsString(), "$.content[0].id")).longValue();

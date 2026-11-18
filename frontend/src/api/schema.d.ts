@@ -583,7 +583,7 @@ export interface paths {
         put?: never;
         /**
          * Reset a user's password
-         * @description Returns a new one-time temporary password and signs the user out everywhere. Not for your own account.
+         * @description Without a body (or without password): generates a one-time password, returned once as temporaryPassword. With password: sets exactly that password (temporaryPassword is then null); requireChange (default true) decides whether they must choose their own at next login. Either way the user is signed out everywhere. Not for your own account.
          */
         post: operations["resetPassword"];
         delete?: never;
@@ -1351,6 +1351,10 @@ export interface components {
         CreatedUser: {
             user: components["schemas"]["UserView"];
             temporaryPassword: string;
+        };
+        ResetPasswordRequest: {
+            password: string;
+            requireChange: boolean;
         };
         PasswordReset: {
             user: components["schemas"]["UserView"];
@@ -2820,9 +2824,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
         responses: {
-            /** @description Your own account, or the account is deactivated */
+            /** @description Your own account, the account is deactivated, or the password is invalid */
             400: {
                 headers: {
                     [name: string]: unknown;

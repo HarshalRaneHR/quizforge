@@ -108,6 +108,39 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void adminCanSetAPasswordDirectlyAndSkipTheForcedChange() {
+        User learner = user(2, "learner@test.com", Role.LEARNER);
+        when(users.findById(2L)).thenReturn(Optional.of(learner));
+        when(encoder.encode("Chosen-pass-1")).thenReturn("CHOSENHASH");
+
+        var reset = service.resetPassword("admin@test.com", 2L, "Chosen-pass-1", false);
+
+        assertThat(reset.temporaryPassword()).isNull();   // the admin already knows it; never echoed back
+        assertThat(learner.getPasswordHash()).isEqualTo("CHOSENHASH");
+        assertThat(learner.isMustChangePassword()).isFalse();
+        assertThat(reset.user().status()).isEqualTo(AccountState.ACTIVE);
+        verify(refreshTokens).revokeAll(learner, RevokeReason.PASSWORD_RESET);
+    }
+
+    @Test
+    void adminChosenPasswordCanStillRequireAChange() {
+        User learner = user(2, "learner@test.com", Role.LEARNER);
+        when(users.findById(2L)).thenReturn(Optional.of(learner));
+
+        var reset = service.resetPassword("admin@test.com", 2L, "Chosen-pass-1", true);
+
+        assertThat(reset.user().status()).isEqualTo(AccountState.PENDING);
+    }
+
+    @Test
+    void adminChosenPasswordMustBeLongEnough() {
+        when(users.findById(2L)).thenReturn(Optional.of(user(2, "learner@test.com", Role.LEARNER)));
+
+        assertThatThrownBy(() -> service.resetPassword("admin@test.com", 2L, "short", false))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
     void adminResetsOwnPasswordFromAccountPageInstead() {
         when(users.findById(1L)).thenReturn(Optional.of(user(1, "admin@test.com", Role.ADMIN)));
 

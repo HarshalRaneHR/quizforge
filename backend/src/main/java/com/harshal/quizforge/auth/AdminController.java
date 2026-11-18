@@ -71,12 +71,25 @@ public class AdminController {
         return adminUsers.setAccess(auth.getName(), id, req.permissions());
     }
 
+    /**
+     * {@code password}: set this exact password; omit to generate a one-time one.
+     * {@code requireChange}: ask the person to choose their own at next login (default true).
+     */
+    public record ResetPasswordRequest(@Size(min = 8, max = 72, message = "must be 8-72 characters") String password,
+                                       Boolean requireChange) {}
+
     @Operation(summary = "Reset a user's password",
-            description = "Returns a new one-time temporary password and signs the user out everywhere. Not for your own account.")
-    @ApiResponse(responseCode = "400", description = "Your own account, or the account is deactivated")
+            description = "Without a body (or without password): generates a one-time password, returned once as temporaryPassword. "
+                    + "With password: sets exactly that password (temporaryPassword is then null); requireChange (default true) "
+                    + "decides whether they must choose their own at next login. Either way the user is signed out everywhere. "
+                    + "Not for your own account.")
+    @ApiResponse(responseCode = "400", description = "Your own account, the account is deactivated, or the password is invalid")
     @PostMapping("/{id}/reset-password")
-    public PasswordReset resetPassword(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
-        return adminUsers.resetPassword(auth.getName(), id);
+    public PasswordReset resetPassword(@Parameter(hidden = true) Authentication auth, @PathVariable Long id,
+                                       @Valid @RequestBody(required = false) ResetPasswordRequest req) {
+        String password = req == null || req.password() == null || req.password().isEmpty() ? null : req.password();
+        boolean requireChange = req == null || req.requireChange() == null || req.requireChange();
+        return adminUsers.resetPassword(auth.getName(), id, password, requireChange);
     }
 
     @Operation(summary = "Deactivate a user",

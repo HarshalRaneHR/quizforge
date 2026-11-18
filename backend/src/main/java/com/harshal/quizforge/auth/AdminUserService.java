@@ -113,6 +113,17 @@ public class AdminUserService {
     @PreAuthorize("hasAuthority('user:manage')")
     @Transactional
     public PasswordReset resetPassword(String actingEmail, Long userId) {
+        return resetPassword(actingEmail, userId, null, true);
+    }
+
+    /**
+     * Reset with a password the admin chose ({@code chosenPassword}), or a generated one when null.
+     * {@code requireChange}: the person must pick their own at next login. A generated password always
+     * requires it. {@code temporaryPassword} in the result is only set when it was generated.
+     */
+    @PreAuthorize("hasAuthority('user:manage')")
+    @Transactional
+    public PasswordReset resetPassword(String actingEmail, Long userId, String chosenPassword, boolean requireChange) {
         User user = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         if (user.getEmail().equals(actingEmail)) {
             throw new BadRequestException("Change your own password from your Account page");
@@ -120,11 +131,15 @@ public class AdminUserService {
         if (!user.isActive()) {
             throw new BadRequestException("Reactivate the account before resetting its password");
         }
-        String temporary = TemporaryPasswords.generate();
-        user.setPasswordHash(encoder.encode(temporary));
-        user.setMustChangePassword(true);
+        boolean generated = chosenPassword == null;
+        if (!generated && (chosenPassword.length() < 8 || chosenPassword.length() > 72)) {
+            throw new BadRequestException("The password must be 8-72 characters");
+        }
+        String password = generated ? TemporaryPasswords.generate() : chosenPassword;
+        user.setPasswordHash(encoder.encode(password));
+        user.setMustChangePassword(generated || requireChange);
         refreshTokens.revokeAll(user, RevokeReason.PASSWORD_RESET);
-        return new PasswordReset(UserView.of(user), temporary);
+        return new PasswordReset(UserView.of(user), generated ? password : null);
     }
 
     /** Blocks login and ends every session immediately. Nothing is deleted. */

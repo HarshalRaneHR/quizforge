@@ -121,6 +121,39 @@ class QuizForgeIntegrationTest {
     }
 
     @Test
+    void perUserAccessIsChosenAtCreationAndChangesApplyImmediately() throws Exception {
+        String admin = login("admin@test.com", "adminpass123");
+
+        // A learner created WITHOUT AI generation but WITH the Studio
+        String email = unique("custom");
+        MvcResult created = send("/api/admin/users", admin, "{\"email\":\"" + email + "\",\"password\":\"password123\","
+                + "\"role\":\"LEARNER\",\"permissions\":[\"QUIZ_AUTHOR\"]}");
+        assertThat(created.getResponse().getStatus()).isEqualTo(201);
+        long userId = num(created, "$.id").longValue();
+        String token = login(email, "password123");
+
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.permissions[0]").value("quiz:author"))
+                .andExpect(jsonPath("$.permissions.length()").value(1));
+        mvc.perform(post("/api/quizzes/generate").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sourceText\":\"" + "x".repeat(250) + "\",\"blueprint\":{\"counts\":{\"TRUE_FALSE\":1}}}"))
+                .andExpect(status().isForbidden());
+        assertThat(send("/api/studio/quizzes", token, "{\"title\":\"Mine\"}").getResponse().getStatus()).isEqualTo(201);
+
+        // Admin removes the Studio: the SAME token is refused on its next request
+        mvc.perform(put("/api/admin/users/" + userId + "/permissions").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"permissions\":[]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.customized").value(true));
+        assertThat(send("/api/studio/quizzes", token, "{\"title\":\"Again\"}").getResponse().getStatus()).isEqualTo(403);
+
+        // Admin-only powers can't be handed out one by one
+        mvc.perform(put("/api/admin/users/" + userId + "/permissions").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"permissions\":[\"USER_MANAGE\"]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void healthIsPublicButApiRequiresAuthentication() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
         mvc.perform(get("/api/me")).andExpect(status().isUnauthorized());

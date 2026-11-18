@@ -25,7 +25,8 @@ public final class AuthDtos {
 
     public record MeResponse(String email, String role, List<String> permissions) {}
 
-    static List<String> permissionsOf(Role role) {
-        return role.permissions().stream().map(Permission::authority).sorted().toList();
+    /** The user's effective permissions (role defaults ± per-user overrides) as authority strings. */
+    static List<String> permissionsOf(User user) {
+        return user.effectivePermissions().stream().map(Permission::authority).sorted().toList();
     }
 }

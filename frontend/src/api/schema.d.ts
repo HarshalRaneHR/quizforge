@@ -128,6 +128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a user's adjustable abilities
+         * @description Requires user:manage. Applies on the user's next request. Not for admins or your own account.
+         */
+        put: operations["setAccess"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/quizzes": {
         parameters: {
             query?: never;
@@ -525,8 +545,8 @@ export interface paths {
         get: operations["listUsers"];
         put?: never;
         /**
-         * Create a user with a role
-         * @description Requires user:manage. E.g. add an instructor directly.
+         * Create a user with a role (and optionally custom access)
+         * @description Requires user:manage. permissions = the adjustable abilities to give; omit for the role's defaults.
          */
         post: operations["createUser"];
         delete?: never;
@@ -550,7 +570,7 @@ export interface paths {
         head?: never;
         /**
          * Change a user's role
-         * @description Requires user:manage. Admins can't change their own role.
+         * @description Requires user:manage. Resets access to the new role's defaults. Admins can't change their own role.
          */
         patch: operations["changeRole"];
         trace?: never;
@@ -821,6 +841,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/access-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Roles, their default permissions, and which permissions can be adjusted per user */
+        get: operations["accessModel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats": {
         parameters: {
             query?: never;
@@ -995,6 +1032,19 @@ export interface components {
             /** Format: date-time */
             savedAt: string;
         };
+        SetAccessRequest: {
+            permissions: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
+        };
+        UserView: {
+            /** Format: int64 */
+            id: number;
+            email: string;
+            role: string;
+            permissions: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
+            customized: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
         CreateQuizRequest: {
             title: string;
             description?: string;
@@ -1159,14 +1209,7 @@ export interface components {
             password: string;
             /** @enum {string} */
             role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
-        };
-        UserView: {
-            /** Format: int64 */
-            id: number;
-            email: string;
-            role: string;
-            /** Format: date-time */
-            createdAt: string;
+            permissions?: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
         };
         ChangeRoleRequest: {
             /** @enum {string} */
@@ -1444,6 +1487,15 @@ export interface components {
             totalElements: number;
             /** Format: int32 */
             totalPages: number;
+        };
+        AccessModel: {
+            roles: components["schemas"]["RoleInfo"][];
+            adjustable: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
+        };
+        RoleInfo: {
+            /** @enum {string} */
+            role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
+            defaultPermissions: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
         };
         DayCount: {
             /** Format: date */
@@ -1780,6 +1832,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SaveAnswerResult"];
+                };
+            };
+        };
+    };
+    setAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Admin-only permission, an admin target, or your own account */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
                 };
             };
         };
@@ -2511,7 +2589,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserView"];
                 };
             };
-            /** @description Validation failed */
+            /** @description Validation failed, or an admin-only permission was requested */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2941,6 +3019,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyAnalytics"];
+                };
+            };
+        };
+    };
+    accessModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessModel"];
                 };
             };
         };

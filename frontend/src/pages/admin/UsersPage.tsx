@@ -21,6 +21,22 @@ import { ROLE_LABELS } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 import { ROLES, type Page, type Role, type UserView } from '@/types';
 import { AddUserDialog } from './AddUserDialog';
+import { EditAccessDialog } from './EditAccessDialog';
+import { PERMISSION_INFO, permissionLabel } from '@/lib/access';
+
+/** Badges for the adjustable abilities a user has, plus a marker when they differ from the role defaults. */
+function AccessSummary({ user }: { user: UserView }) {
+  if (user.role === 'ADMIN') return <span className="text-xs text-muted-foreground">Full access</span>;
+  const shown = user.permissions.filter(p => p in PERMISSION_INFO);
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {shown.length === 0
+        ? <span className="text-xs text-muted-foreground">Take quizzes only</span>
+        : shown.map(p => <Badge key={p} variant="outline" className="font-normal">{permissionLabel(p)}</Badge>)}
+      {user.customized && <Badge variant="secondary">Custom</Badge>}
+    </div>
+  );
+}
 
 const ALL = 'ALL';
 
@@ -96,6 +112,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead className="pl-6">User</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Access</TableHead>
                   <TableHead className="pr-6 text-right">Joined</TableHead>
                 </TableRow>
               </TableHeader>
@@ -116,6 +133,12 @@ export default function UsersPage() {
                       <TableCell>
                         {/* Admins can't change their own role (the API refuses too). */}
                         {canManage && !isMe ? <RoleSelect user={u} /> : <RoleBadge role={u.role} />}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-between gap-2">
+                          <AccessSummary user={u} />
+                          {canManage && !isMe && u.role !== 'ADMIN' && <EditAccessDialog user={u} />}
+                        </div>
                       </TableCell>
                       <TableCell className="pr-6 text-right text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>

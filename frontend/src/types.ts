@@ -12,6 +12,8 @@ type WithRole<T> = Omit<T, 'role'> & { role: Role };
 
 export type AuthResponse = WithRole<Schemas['AuthResponse']>;
 export type UserView = WithRole<Schemas['UserView']>;
+export type PermissionName = Schemas['UserView']['permissions'][number];
+export type AccessModel = Schemas['AccessModel'];
 
 export type GenerateQuizRequest = Schemas['GenerateQuizRequest'];
 export type QuizSummary = Schemas['QuizSummary'];

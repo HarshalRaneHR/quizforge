@@ -61,14 +61,14 @@ public class AuthService {
     @Transactional(readOnly = true)
     public MeResponse me(String email) {
         User user = users.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
-        return new MeResponse(user.getEmail(), user.getRole().name(), AuthDtos.permissionsOf(user.getRole()));
+        return new MeResponse(user.getEmail(), user.getRole().name(), AuthDtos.permissionsOf(user));
     }
 
     private Session sessionFor(User user, String refreshToken) {
         String role = user.getRole().name();
         AuthResponse body = new AuthResponse(
                 jwt.generate(user.getEmail(), role), jwt.lifetime().toSeconds(),
-                user.getEmail(), role, AuthDtos.permissionsOf(user.getRole()));
+                user.getEmail(), role, AuthDtos.permissionsOf(user));
         return new Session(body, refreshToken);
     }
 }

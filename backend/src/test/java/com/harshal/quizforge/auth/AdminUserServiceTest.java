@@ -54,7 +54,7 @@ class AdminUserServiceTest {
         when(encoder.encode("secret123")).thenReturn("HASH");
         when(users.save(org.mockito.ArgumentMatchers.any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var view = service.createUser("  Teacher@Test.com ", "secret123", Role.INSTRUCTOR);
+        var view = service.createUser("  Teacher@Test.com ", "secret123", Role.INSTRUCTOR, null);
 
         assertThat(view.email()).isEqualTo("teacher@test.com");
         assertThat(view.role()).isEqualTo("INSTRUCTOR");
@@ -65,7 +65,7 @@ class AdminUserServiceTest {
     void createRejectsDuplicateEmail() {
         when(users.existsByEmail("dup@test.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.createUser("dup@test.com", "secret123", Role.LEARNER))
+        assertThatThrownBy(() -> service.createUser("dup@test.com", "secret123", Role.LEARNER, null))
                 .isInstanceOf(com.harshal.quizforge.common.ConflictException.class);
     }
 

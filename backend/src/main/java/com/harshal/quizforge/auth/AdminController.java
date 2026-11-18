@@ -1,5 +1,7 @@
 package com.harshal.quizforge.auth;
 
+import java.util.Set;
+import com.harshal.quizforge.auth.AdminUserService.AccessModel;
 import com.harshal.quizforge.auth.AdminUserService.UserView;
 import com.harshal.quizforge.common.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,19 +33,39 @@ public class AdminController {
 
     public record ChangeRoleRequest(@NotNull Role role) {}
 
+    /** {@code permissions}: adjustable abilities to give the user; omit to use the role's defaults. */
     public record CreateUserRequest(
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 72, message = "must be 8-72 characters") String password,
-            @NotNull Role role) {}
+            @NotNull Role role,
+            Set<Permission> permissions) {}
 
-    @Operation(summary = "Create a user with a role", description = "Requires user:manage. E.g. add an instructor directly.")
+    public record SetAccessRequest(@NotNull Set<Permission> permissions) {}
+
+    @Operation(summary = "Roles, their default permissions, and which permissions can be adjusted per user")
+    @GetMapping("/access-model")
+    public AccessModel accessModel() {
+        return adminUsers.accessModel();
+    }
+
+    @Operation(summary = "Create a user with a role (and optionally custom access)",
+            description = "Requires user:manage. permissions = the adjustable abilities to give; omit for the role's defaults.")
     @ApiResponse(responseCode = "201", description = "User created")
-    @ApiResponse(responseCode = "400", description = "Validation failed")
+    @ApiResponse(responseCode = "400", description = "Validation failed, or an admin-only permission was requested")
     @ApiResponse(responseCode = "409", description = "Email already registered")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserView createUser(@Valid @RequestBody CreateUserRequest req) {
-        return adminUsers.createUser(req.email(), req.password(), req.role());
+        return adminUsers.createUser(req.email(), req.password(), req.role(), req.permissions());
+    }
+
+    @Operation(summary = "Set a user's adjustable abilities",
+            description = "Requires user:manage. Applies on the user's next request. Not for admins or your own account.")
+    @ApiResponse(responseCode = "400", description = "Admin-only permission, an admin target, or your own account")
+    @PutMapping("/{id}/permissions")
+    public UserView setAccess(@Parameter(hidden = true) Authentication auth, @PathVariable Long id,
+                              @Valid @RequestBody SetAccessRequest req) {
+        return adminUsers.setAccess(auth.getName(), id, req.permissions());
     }
 
     @Operation(summary = "Search users", description = "Filter by email text and/or role. Requires user:read.")
@@ -57,7 +79,7 @@ public class AdminController {
         return PageResponse.of(adminUsers.search(search, role, pageable));
     }
 
-    @Operation(summary = "Change a user's role", description = "Requires user:manage. Admins can't change their own role.")
+    @Operation(summary = "Change a user's role", description = "Requires user:manage. Resets access to the new role's defaults. Admins can't change their own role.")
     @ApiResponse(responseCode = "200", description = "Role changed")
     @ApiResponse(responseCode = "400", description = "Invalid role, or tried to change own role")
     @ApiResponse(responseCode = "403", description = "Not an admin")

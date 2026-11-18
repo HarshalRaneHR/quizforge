@@ -45,7 +45,7 @@ public class QuizServiceTest {
         quizRepo = mock(QuizRepository.class);
         userRepo = mock(UserRepository.class);
         attemptRepo = mock(AttemptRepository.class);
-        service = new QuizService(quizRepo, userRepo, attemptRepo, new QuestionMapper(registry()));
+        service = new QuizService(quizRepo, userRepo, attemptRepo, new QuestionMapper(registry()), registry());
     }
 
     private static User user(String email) {

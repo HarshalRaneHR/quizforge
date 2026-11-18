@@ -9,6 +9,7 @@ import com.harshal.quizforge.common.ForbiddenException;
 import com.harshal.quizforge.common.NotFoundException;
 import com.harshal.quizforge.question.QuestionDraft;
 import com.harshal.quizforge.question.QuestionType;
+import com.harshal.quizforge.question.QuestionTypeRegistry;
 import com.harshal.quizforge.quiz.QuizDtos.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,6 +36,7 @@ public class QuizService {
     private final UserRepository userRepo;
     private final AttemptRepository attemptRepo;
     private final QuestionMapper questions;
+    private final QuestionTypeRegistry registry;
 
     /** Saves AI-generated questions as a personal practice quiz (private, ready to take). */
     @Transactional
@@ -79,6 +81,22 @@ public class QuizService {
     }
 
     /** Landing page before starting: settings and my attempts so far (no questions). */
+    /**
+     * Every question with its correct answer and explanation, without taking the quiz.
+     * Only for the quiz's author and admins (also for read-only library quizzes); learners get 403.
+     */
+    @Transactional(readOnly = true)
+    public AnswerKeyView answerKey(CurrentUser user, Long id) {
+        Quiz quiz = getTakeable(user, id);
+        if (!QuizPolicy.canAuthor(quiz, user)) {
+            throw new ForbiddenException("Only the quiz's author or an admin can see the answers");
+        }
+        List<KeyedQuestion> keyed = quiz.getQuestions().stream()
+                .map(q -> new KeyedQuestion(questions.toSessionQuestion(q, null), registry.toMap(q.getAnswerKeyJson()), q.getExplanation()))
+                .toList();
+        return new AnswerKeyView(quiz.getId(), quiz.getTitle(), quiz.getTotalPoints(), keyed);
+    }
+
     @Transactional(readOnly = true)
     public QuizDetail getOverview(CurrentUser user, Long id) {
         Quiz quiz = getTakeable(user, id);
@@ -87,7 +105,8 @@ public class QuizService {
                 .map(Attempt::getId).orElse(null);
         return new QuizDetail(quiz.getId(), quiz.getTitle(), quiz.getDescription(), quiz.getStatus(),
                 quiz.getOwner().getEmail(), quiz.getQuestionCount(), quiz.getTotalPoints(), Settings.of(quiz.getSettings()),
-                (int) used, attemptsLeft(user, quiz), openId, QuizPolicy.canEdit(quiz, user), quiz.isBuiltIn());
+                (int) used, attemptsLeft(user, quiz), openId, QuizPolicy.canEdit(quiz, user),
+                QuizPolicy.canAuthor(quiz, user), quiz.isBuiltIn());
     }
 
     /** Remaining attempts; null = unlimited. Authors previewing their own quiz are never limited. */

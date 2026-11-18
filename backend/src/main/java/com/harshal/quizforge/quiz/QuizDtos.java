@@ -71,7 +71,13 @@ public final class QuizDtos {
      */
     public record QuizDetail(Long id, String title, String description, QuizStatus status, String author,
                              int questionCount, int totalPoints, Settings settings,
-                             int attemptsUsed, Integer attemptsLeft, Long openAttemptId, boolean canAuthor, boolean builtIn) {}
+                             int attemptsUsed, Integer attemptsLeft, Long openAttemptId, boolean canAuthor,
+                             boolean canViewAnswers, boolean builtIn) {}
+
+    /** A question with its correct answer (same shape as in graded results) — author/admin only. */
+    public record KeyedQuestion(SessionQuestion question, Map<String, Object> correctAnswer, String explanation) {}
+
+    public record AnswerKeyView(Long quizId, String title, int totalPoints, List<KeyedQuestion> questions) {}
 
     // ---------------------------------------------------------------- attempts
 

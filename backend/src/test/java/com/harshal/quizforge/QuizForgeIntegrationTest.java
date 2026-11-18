@@ -89,6 +89,20 @@ class QuizForgeIntegrationTest {
         assertThat(counts).containsOnly(20);
         long javaQuiz = libraryIds.getFirst();
 
+        // Admins can view the answer key (no attempt created); learners can't
+        mvc.perform(get("/api/quizzes/" + javaQuiz + "/answer-key").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.questions.length()").value(20))
+                .andExpect(jsonPath("$.questions[0].correctAnswer").exists())
+                .andExpect(jsonPath("$.questions[0].explanation").isNotEmpty());
+        mvc.perform(get("/api/quizzes/" + javaQuiz + "/answer-key").header("Authorization", "Bearer " + learner))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/quizzes/" + javaQuiz).header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.canViewAnswers").value(true))
+                .andExpect(jsonPath("$.canAuthor").value(false));   // read-only library: no "Edit in Studio"
+        mvc.perform(get("/api/quizzes/" + javaQuiz).header("Authorization", "Bearer " + learner))
+                .andExpect(jsonPath("$.canViewAnswers").value(false));
+
         // Not even an admin can delete or edit it through the API
         mvc.perform(delete("/api/quizzes/" + javaQuiz).header("Authorization", "Bearer " + admin)).andExpect(status().isConflict());
         mvc.perform(put("/api/studio/quizzes/" + javaQuiz).header("Authorization", "Bearer " + admin)

@@ -9,6 +9,7 @@ const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ExplorePage = lazy(() => import('@/pages/ExplorePage'));
 const TakeQuizPage = lazy(() => import('@/pages/TakeQuizPage'));
+const AnswerKeyPage = lazy(() => import('@/pages/AnswerKeyPage'));
 const HistoryPage = lazy(() => import('@/pages/HistoryPage'));
 const ReviewAttemptPage = lazy(() => import('@/pages/ReviewAttemptPage'));
 const StudioPage = lazy(() => import('@/pages/studio/StudioPage'));
@@ -30,6 +31,7 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="explore" element={<ExplorePage />} />
           <Route path="quiz/:id" element={<TakeQuizPage />} />
+          <Route path="quiz/:id/answers" element={<AnswerKeyPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="attempts/:id" element={<ReviewAttemptPage />} />
           <Route path="studio" element={

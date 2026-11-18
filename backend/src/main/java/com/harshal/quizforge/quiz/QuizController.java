@@ -77,6 +77,15 @@ public class QuizController {
         return quizzes.getOverview(CurrentUser.of(auth), id);
     }
 
+    @Operation(summary = "Answer key: every question with its correct answer and explanation",
+            description = "For the quiz's author and admins (including built-in library quizzes). Doesn't create an attempt.")
+    @ApiResponse(responseCode = "403", description = "Learners can't see answers")
+    @ApiResponse(responseCode = "404", description = "Quiz doesn't exist or isn't available to you")
+    @GetMapping("/quizzes/{id}/answer-key")
+    public AnswerKeyView answerKey(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
+        return quizzes.answerKey(CurrentUser.of(auth), id);
+    }
+
     @Operation(summary = "Delete a quiz and its attempts",
             description = "Owner (or quiz:manage-all). Quizzes learners have attempted must be archived instead.")
     @ApiResponse(responseCode = "204", description = "Deleted")

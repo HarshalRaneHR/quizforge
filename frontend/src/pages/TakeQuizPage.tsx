@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, ChartLine, CircleX, Cloud, CloudOff, Copy, Eye, Flag, ListChecks, LoaderCircle, Pencil, Play,
+  ArrowLeft, ChartLine, CircleX, Cloud, CloudOff, Copy, Eye, Flag, KeyRound, ListChecks, LoaderCircle, Pencil, Play,
   RotateCcw, Send, Shuffle, Target, Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -85,6 +85,7 @@ function Landing({ quiz, onStart, starting }: { quiz: QuizDetail; onStart: () =>
       </CardContent>
       <CardFooter className="flex-wrap justify-end gap-2 border-t">
         {quiz.canAuthor && <Button asChild variant="outline"><Link to={`/studio/${quiz.id}`}><Pencil /> Edit in Studio</Link></Button>}
+        {quiz.canViewAnswers && <Button asChild variant="outline"><Link to={`/quiz/${quiz.id}/answers`}><KeyRound /> View with answers</Link></Button>}
         {quiz.builtIn && can(PERMISSIONS.QUIZ_AUTHOR) && <CopyToStudioButton quizId={quiz.id} />}
         {left === 0 && !resume ? (
           <Button disabled>No attempts left</Button>

@@ -619,6 +619,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quizzes/{id}/answer-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Answer key: every question with its correct answer and explanation
+         * @description For the quiz's author and admins (including built-in library quizzes). Doesn't create an attempt.
+         */
+        get: operations["answerKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quizzes/explore": {
         parameters: {
             query?: never;
@@ -1244,7 +1264,23 @@ export interface components {
             /** Format: int64 */
             openAttemptId: number;
             canAuthor: boolean;
+            canViewAnswers: boolean;
             builtIn: boolean;
+        };
+        AnswerKeyView: {
+            /** Format: int64 */
+            quizId: number;
+            title: string;
+            /** Format: int32 */
+            totalPoints: number;
+            questions: components["schemas"]["KeyedQuestion"][];
+        };
+        KeyedQuestion: {
+            question: components["schemas"]["SessionQuestion"];
+            correctAnswer: {
+                [key: string]: unknown;
+            };
+            explanation: string;
         };
         CatalogQuiz: {
             /** Format: int64 */
@@ -2652,6 +2688,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    answerKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Learners can't see answers */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerKeyView"];
+                };
+            };
+            /** @description Quiz doesn't exist or isn't available to you */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerKeyView"];
+                };
             };
         };
     };

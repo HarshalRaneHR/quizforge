@@ -19,7 +19,7 @@ export function EditAccessDialog({ user }: { user: UserView }) {
   const [open, setOpen] = useState(false);
   const model = useAccessModel(open);
   const adjustable = model.data?.adjustable ?? [];
-  const current = user.permissions.filter(p => adjustable.includes(p));
+  const current = (user.permissions ?? []).filter(p => adjustable.includes(p));
   const [value, setValue] = useState<PermissionName[] | null>(null);   // null = untouched (show current)
   const chosen = value ?? current;
   const defaults = defaultsFor(model.data, user.role);

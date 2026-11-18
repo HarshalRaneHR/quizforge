@@ -27,7 +27,7 @@ import { PERMISSION_INFO, permissionLabel } from '@/lib/access';
 /** Badges for the adjustable abilities a user has, plus a marker when they differ from the role defaults. */
 function AccessSummary({ user }: { user: UserView }) {
   if (user.role === 'ADMIN') return <span className="text-xs text-muted-foreground">Full access</span>;
-  const shown = user.permissions.filter(p => p in PERMISSION_INFO);
+  const shown = (user.permissions ?? []).filter(p => p in PERMISSION_INFO);
   return (
     <div className="flex flex-wrap items-center gap-1">
       {shown.length === 0

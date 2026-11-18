@@ -12,8 +12,19 @@ One administrator decides who gets an account and what each person may do. Instr
 
 ---
 
+## Screenshots
+
+| Invite-only login | Learner home |
+|---|---|
+| ![Login page with the invite-only message](docs/screenshots/01-login.png) | ![Learner home with an assigned quiz and the AI practice quiz form](docs/screenshots/02-learner-home.png) |
+| **Explore and the built-in library** | **My classes** |
+| ![Explore page listing published quizzes and the built-in library](docs/screenshots/03-explore.png) | ![My classes page with a join code box, an assigned quiz and a due date](docs/screenshots/04-my-classes.png) |
+
+---
+
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
@@ -43,7 +54,7 @@ One administrator decides who gets an account and what each person may do. Instr
 ### For instructors
 
 - **Studio.** Create quizzes, edit every question in an editor made for its type, reorder questions, and set the rules: attempts allowed, pass mark, shuffling and whether learners see answers.
-- **AI generation from notes.** Paste notes, choose the number of questions and split them across question types by hand, *Equal* or *Random*. Generation runs in the background with live progress.
+- **AI generation from notes.** Paste notes, choose the number of questions and split them across question types by hand, _Equal_ or _Random_. Generation runs in the background with live progress.
 - **Quiz lifecycle.** Draft → publish → archive / restore / duplicate. Quizzes that learners have taken are protected from edits.
 - **Classrooms.** Create a class, share its join code, assign quizzes with optional due dates, and follow the gradebook with CSV export.
 - **Quiz analytics.** Per-question difficulty and the most common wrong answers.
@@ -66,14 +77,14 @@ One administrator decides who gets an account and what each person may do. Instr
 
 ## Tech stack
 
-| Layer | Technologies |
-|---|---|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query, React Router 7, Recharts, sonner |
-| Backend | Java 25, Spring Boot 4, Spring Security (JWT + rotating refresh tokens), Spring Data JPA / Hibernate, Bean Validation, springdoc OpenAPI, Actuator, Bucket4j |
-| AI | Spring AI with Ollama, structured output, any local model such as `llama3.1` |
-| Database | PostgreSQL 16 with JSONB, schema managed by Flyway |
-| Testing | JUnit 5, Mockito, MockMvc, Testcontainers |
-| DevOps | Docker, Docker Compose, nginx, GitHub Actions |
+| Layer    | Technologies                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query, React Router 7, Recharts, sonner                                              |
+| Backend  | Java 25, Spring Boot 4, Spring Security (JWT + rotating refresh tokens), Spring Data JPA / Hibernate, Bean Validation, springdoc OpenAPI, Actuator, Bucket4j |
+| AI       | Spring AI with Ollama, structured output, any local model such as `llama3.1`                                                                                 |
+| Database | PostgreSQL 16 with JSONB, schema managed by Flyway                                                                                                           |
+| Testing  | JUnit 5, Mockito, MockMvc, Testcontainers                                                                                                                    |
+| DevOps   | Docker, Docker Compose, nginx, GitHub Actions                                                                                                                |
 
 ```
 ┌──────────────────────────┐       /api/*        ┌─────────────────────────────┐
@@ -153,18 +164,18 @@ Set `DEMO_DATA=true` in `.env` before starting. It creates `demo-instructor@quiz
 
 All settings come from environment variables or `.env`. The `.env` file is never committed; `application.yaml` contains only placeholders.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | — | PostgreSQL connection. Set automatically by Docker Compose. |
-| `JWT_SECRET` | — | Base64 key of 32+ bytes for signing access tokens |
-| `COOKIE_SECURE` | `true` | HTTPS-only refresh cookie. Browsers still accept it on `localhost`. |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | — | First admin account, created once on an empty database |
-| `ADMIN_REQUIRE_PASSWORD_CHANGE` | `true` | The first admin must replace the `.env` password at first login |
-| `PUBLIC_SIGNUP` | `false` | `true` lets anyone create a Learner account; otherwise only admins add people |
-| `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | — / `llama3.1` | Model server and model for AI generation |
-| `AI_GENERATIONS_PER_HOUR` | `10` | AI generations per person per hour (then 429 with `Retry-After`) |
-| `DEMO_DATA`, `DEMO_PASSWORD` | `false` | Seed demo accounts, a quiz and a classroom |
-| `API_DOCS_ENABLED` | `true` | Swagger UI and the OpenAPI spec |
+| Variable                           | Default        | Purpose                                                                       |
+| ---------------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | —              | PostgreSQL connection. Set automatically by Docker Compose.                   |
+| `JWT_SECRET`                       | —              | Base64 key of 32+ bytes for signing access tokens                             |
+| `COOKIE_SECURE`                    | `true`         | HTTPS-only refresh cookie. Browsers still accept it on `localhost`.           |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`    | —              | First admin account, created once on an empty database                        |
+| `ADMIN_REQUIRE_PASSWORD_CHANGE`    | `true`         | The first admin must replace the `.env` password at first login               |
+| `PUBLIC_SIGNUP`                    | `false`        | `true` lets anyone create a Learner account; otherwise only admins add people |
+| `OLLAMA_BASE_URL`, `OLLAMA_MODEL`  | — / `llama3.1` | Model server and model for AI generation                                      |
+| `AI_GENERATIONS_PER_HOUR`          | `10`           | AI generations per person per hour (then 429 with `Retry-After`)              |
+| `DEMO_DATA`, `DEMO_PASSWORD`       | `false`        | Seed demo accounts, a quiz and a classroom                                    |
+| `API_DOCS_ENABLED`                 | `true`         | Swagger UI and the OpenAPI spec                                               |
 
 Failed logins are limited to 5 per email within 15 minutes.
 
@@ -174,16 +185,16 @@ Failed logins are limited to 5 per email within 15 minutes.
 
 Full interactive documentation is in Swagger UI. Main endpoints:
 
-| Area | Endpoints |
-|---|---|
-| Auth | `GET /api/auth/config` · `POST /api/auth/login · refresh · logout · register` (register only when public sign-up is on) |
-| Account | `GET /api/me` · `POST /api/account/password` · `PUT /api/account/profile` |
-| Practice & catalog | `POST /api/quizzes/generate` (background job) · `GET /api/generation-jobs/{id}` · `GET /api/quizzes` · `GET /api/quizzes/explore` · `GET /api/quizzes/{id}/answer-key` |
-| Taking quizzes | `GET /api/quizzes/{id}` · `POST /api/quizzes/{id}/attempts` (start or resume) · `PUT /api/attempts/{id}/answers/{questionId}` (autosave) · `POST /api/attempts/{id}/submit` · `GET /api/attempts/{id}` · `GET /api/attempts/me` |
-| Studio | `/api/studio/quizzes`: create, edit, settings, questions CRUD and reorder, AI generate, publish / unpublish / archive / restore / duplicate, analytics |
-| Classrooms | `/api/classrooms`: create, join by code, members, assignments, gradebook and CSV · `GET /api/assignments/me` |
-| Analytics | `GET /api/analytics/me` · `GET /api/studio/quizzes/{id}/analytics` · `GET /api/admin/stats` |
-| Admin | `GET/POST /api/admin/users` · `PATCH …/{id}/role` · `PUT …/{id}/permissions` · `POST …/{id}/reset-password · deactivate · reactivate` · `GET …/access-model` |
+| Area               | Endpoints                                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth               | `GET /api/auth/config` · `POST /api/auth/login · refresh · logout · register` (register only when public sign-up is on)                                                                                                         |
+| Account            | `GET /api/me` · `POST /api/account/password` · `PUT /api/account/profile`                                                                                                                                                       |
+| Practice & catalog | `POST /api/quizzes/generate` (background job) · `GET /api/generation-jobs/{id}` · `GET /api/quizzes` · `GET /api/quizzes/explore` · `GET /api/quizzes/{id}/answer-key`                                                          |
+| Taking quizzes     | `GET /api/quizzes/{id}` · `POST /api/quizzes/{id}/attempts` (start or resume) · `PUT /api/attempts/{id}/answers/{questionId}` (autosave) · `POST /api/attempts/{id}/submit` · `GET /api/attempts/{id}` · `GET /api/attempts/me` |
+| Studio             | `/api/studio/quizzes`: create, edit, settings, questions CRUD and reorder, AI generate, publish / unpublish / archive / restore / duplicate, analytics                                                                          |
+| Classrooms         | `/api/classrooms`: create, join by code, members, assignments, gradebook and CSV · `GET /api/assignments/me`                                                                                                                    |
+| Analytics          | `GET /api/analytics/me` · `GET /api/studio/quizzes/{id}/analytics` · `GET /api/admin/stats`                                                                                                                                     |
+| Admin              | `GET/POST /api/admin/users` · `PATCH …/{id}/role` · `PUT …/{id}/permissions` · `POST …/{id}/reset-password · deactivate · reactivate` · `GET …/access-model`                                                                    |
 
 `POST /api/admin/users/{id}/reset-password` without a body generates a one-time password. With `{"password": "...", "requireChange": false}` it sets that exact password.
 
@@ -230,7 +241,7 @@ quizforge/
 - **Background generation jobs** run on virtual threads with progress polling, one job per user and a Bucket4j token-bucket limit. They fail fast when the model is unreachable instead of holding an HTTP request open for minutes.
 - **Attempts are server-side state.** One open attempt per learner and quiz is enforced by a partial unique index. Answers autosave per question, and shuffling comes from a per-attempt seed, so a resumed attempt looks identical.
 - **Quiz lifecycle protects results.** Questions are editable only in drafts. Quizzes that learners have taken are archived or duplicated, never edited or deleted.
-- **Defence in depth for the library.** Built-in quizzes are blocked from editing and deleting in the service layer *and* by a PostgreSQL trigger. Their content lives in versioned JSON, validated by a unit test.
+- **Defence in depth for the library.** Built-in quizzes are blocked from editing and deleting in the service layer _and_ by a PostgreSQL trigger. Their content lives in versioned JSON, validated by a unit test.
 - **Account lifecycle enforced by the server.** The JWT filter reloads the user on every request, so a deactivation or access change applies to the very next click. A pending password change blocks every endpoint except changing the password. "Deactivated" is only revealed after a correct password, so emails can't be probed. People are deactivated, never deleted, so gradebooks stay intact.
 - **Security.** Access tokens last 15 minutes and live only in memory. Refresh tokens rotate, are stored hashed, sit in an HttpOnly SameSite=Strict cookie and detect reuse. Permissions are checked by method security, resources you can't see return 404, CSV export is protected against formula injection, and containers run as non-root.
 - **Aggregates in the database.** The gradebook and analytics use grouped JPQL with interface projections, so one query replaces one query per cell.

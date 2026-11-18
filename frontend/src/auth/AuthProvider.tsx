@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, refreshSession, setSessionExpiredHandler, tokenStore } from '@/api/client';
+import { api, refreshSession, setPasswordChangeRequiredHandler, setSessionExpiredHandler, tokenStore } from '@/api/client';
 import type { Permission } from '@/lib/permissions';
 import type { AuthResponse } from '@/types';
 import { AuthContext, type AuthStatus, type AuthUser } from './auth-context';
@@ -12,7 +12,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((r: AuthResponse) => {
     tokenStore.set(r.token);
-    setUser({ email: r.email, role: r.role, permissions: r.permissions });
+    setUser({ email: r.email, fullName: r.fullName, role: r.role, permissions: r.permissions, mustChangePassword: r.mustChangePassword });
     setStatus('authenticated');
   }, []);
 
@@ -23,15 +23,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();   // the next user must never see the previous user's cached data
   }, [queryClient]);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser(current => (current ? { ...current, ...patch } : current));
+  }, []);
+
   useEffect(() => {
     // v1 stored the token in localStorage; remove it so nothing sensitive lingers there.
     localStorage.removeItem('token');
     localStorage.removeItem('user');
 
     setSessionExpiredHandler(clearSession);
+    // An admin reset the password while this tab was open: the router then shows "Set your password".
+    setPasswordChangeRequiredHandler(() => updateUser({ mustChangePassword: true }));
     // Restore the session after a page reload using the HttpOnly refresh cookie.
     refreshSession().then(login).catch(clearSession);
-  }, [login, clearSession]);
+  }, [login, clearSession, updateUser]);
 
   const logout = useCallback(async () => {
     try {
@@ -43,6 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const can = useCallback((permission: Permission) => !!user?.permissions.includes(permission), [user]);
 
-  const value = useMemo(() => ({ user, status, login, logout, can }), [user, status, login, logout, can]);
+  const value = useMemo(() => ({ user, status, login, logout, updateUser, can }), [user, status, login, logout, updateUser, can]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

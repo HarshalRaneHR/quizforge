@@ -1,5 +1,6 @@
 package com.harshal.quizforge.auth;
 
+import com.harshal.quizforge.auth.AuthDtos.AuthConfig;
 import com.harshal.quizforge.auth.AuthDtos.AuthResponse;
 import com.harshal.quizforge.auth.AuthDtos.LoginRequest;
 import com.harshal.quizforge.auth.AuthDtos.RegisterRequest;
@@ -30,10 +31,17 @@ public class AuthController {
     private final RefreshTokenService refreshTokens;
     private final RefreshCookies cookies;
 
+    @Operation(summary = "Login page settings", description = "Whether public sign-up is open (PUBLIC_SIGNUP).")
+    @GetMapping("/config")
+    public AuthConfig config() {
+        return authService.config();
+    }
+
     @Operation(summary = "Create an account (role LEARNER)",
-            description = "Returns an access token and sets the HttpOnly refresh-token cookie.")
+            description = "Only when public sign-up is enabled. Returns an access token and sets the HttpOnly refresh-token cookie.")
     @ApiResponse(responseCode = "201", description = "Account created")
     @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "403", description = "Sign-up is closed", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "409", description = "Email already registered", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
@@ -44,6 +52,8 @@ public class AuthController {
             description = "Returns an access token (paste it into Authorize) and sets the refresh-token cookie.")
     @ApiResponse(responseCode = "200", description = "Logged in")
     @ApiResponse(responseCode = "401", description = "Invalid email or password", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "403", description = "Account deactivated (only told after a correct password)", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "429", description = "Too many failed attempts for this email", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         return withRefreshCookie(HttpStatus.OK, authService.login(req));

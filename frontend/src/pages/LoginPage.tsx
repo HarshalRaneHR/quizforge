@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChartLine, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { api, errorMessage } from '@/api/client';
 import { useAuth } from '@/auth/auth-context';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { AuthResponse } from '@/types';
+import type { AuthConfig, AuthResponse } from '@/types';
 
 const FEATURES = [
   { icon: Sparkles, title: 'AI-generated quizzes', text: 'Paste your notes and get a quiz in seconds.' },
@@ -20,6 +20,7 @@ const FEATURES = [
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login } = useAuth();
@@ -27,15 +28,25 @@ export default function LoginPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
+  // Invite-only unless the server says public sign-up is open.
+  const config = useQuery({
+    queryKey: ['auth-config'],
+    queryFn: () => api.get<AuthConfig>('/auth/config').then(r => r.data),
+    staleTime: Infinity,
+  });
+  const signupOpen = config.data?.publicSignup === true;
+
   const submit = useMutation({
-    mutationFn: () => api.post<AuthResponse>(`/auth/${mode}`, { email, password }).then(r => r.data),
+    mutationFn: () => api.post<AuthResponse>(`/auth/${mode}`,
+      mode === 'register' ? { email, password, fullName: fullName.trim() || undefined } : { email, password }).then(r => r.data),
     onSuccess: data => {
       login(data);
-      navigate(from, { replace: true });
+      // Accounts made by an admin go to "Set your password" first (the route guard enforces it too).
+      navigate(data.mustChangePassword ? '/set-password' : from, { replace: true });
     },
   });
 
-  const isLogin = mode === 'login';
+  const isLogin = mode === 'login' || !signupOpen;
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -74,6 +85,13 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form id="auth-form" className="grid gap-4" onSubmit={e => { e.preventDefault(); submit.mutate(); }}>
+              {!isLogin && (
+                <div className="grid gap-2">
+                  <Label htmlFor="fullName">Full name</Label>
+                  <Input id="fullName" autoComplete="name" maxLength={80} placeholder="Your name"
+                         value={fullName} onChange={e => setFullName(e.target.value)} />
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" required autoComplete="email" placeholder="you@example.com"
@@ -97,13 +115,19 @@ export default function LoginPage() {
               {submit.isPending && <LoaderCircle className="animate-spin" />}
               {isLogin ? 'Log in' : 'Create account'}
             </Button>
-            <p className="text-sm text-muted-foreground">
-              {isLogin ? 'New to QuizForge? ' : 'Already have an account? '}
-              <button type="button" className="font-medium text-primary underline-offset-4 hover:underline"
-                      onClick={() => { setMode(isLogin ? 'register' : 'login'); submit.reset(); }}>
-                {isLogin ? 'Create an account' : 'Log in'}
-              </button>
-            </p>
+            {signupOpen ? (
+              <p className="text-sm text-muted-foreground">
+                {isLogin ? 'New to QuizForge? ' : 'Already have an account? '}
+                <button type="button" className="font-medium text-primary underline-offset-4 hover:underline"
+                        onClick={() => { setMode(isLogin ? 'register' : 'login'); submit.reset(); }}>
+                  {isLogin ? 'Create an account' : 'Log in'}
+                </button>
+              </p>
+            ) : config.isSuccess && (
+              <p className="text-center text-sm text-muted-foreground">
+                Need an account or forgot your password? Ask your administrator.
+              </p>
+            )}
           </CardFooter>
         </Card>
       </main>

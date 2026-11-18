@@ -13,7 +13,7 @@ import java.util.UUID;
 @Getter @Setter @NoArgsConstructor
 public class RefreshToken {
 
-    public enum RevokeReason { ROTATED, LOGOUT, REUSE_DETECTED }
+    public enum RevokeReason { ROTATED, LOGOUT, REUSE_DETECTED, PASSWORD_CHANGED, PASSWORD_RESET, DEACTIVATED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

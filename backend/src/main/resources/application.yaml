@@ -72,3 +72,8 @@ app:
   admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+    require-password-change: ${ADMIN_REQUIRE_PASSWORD_CHANGE:true}   # first login must replace the .env password
+  auth:
+    public-signup: ${PUBLIC_SIGNUP:false}   # invite-only by default: admins create accounts
+    max-failed-logins: 5                    # per email...
+    failed-login-window-minutes: 15         # ...within this window, then 429

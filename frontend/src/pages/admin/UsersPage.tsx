@@ -19,10 +19,22 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { PERMISSIONS } from '@/lib/permissions';
 import { ROLE_LABELS } from '@/lib/roles';
 import { cn } from '@/lib/utils';
-import { ROLES, type Page, type Role, type UserView } from '@/types';
-import { AddUserDialog } from './AddUserDialog';
-import { EditAccessDialog } from './EditAccessDialog';
+import { ROLES, type AccountState, type Page, type Role, type UserView } from '@/types';
+import { AccountStatusBadge } from '@/components/app/AccountStatusBadge';
+import { ACCOUNT_STATES, accountStateLabel } from '@/lib/account-status';
 import { PERMISSION_INFO, permissionLabel } from '@/lib/access';
+import { AddUserDialog } from './AddUserDialog';
+import { UserActions } from './UserActions';
+
+/** "3 days ago" style, or "Never" for people who haven't logged in yet. */
+function lastSeen(iso?: string | null) {
+  if (!iso) return 'Never';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 30) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 /** Badges for the adjustable abilities a user has, plus a marker when they differ from the role defaults. */
 function AccessSummary({ user }: { user: UserView }) {
@@ -46,7 +58,7 @@ function RoleSelect({ user }: { user: UserView }) {
     mutationFn: (role: Role) => api.patch<UserView>(`/admin/users/${user.id}/role`, { role }).then(r => r.data),
     onSuccess: updated => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast.success(`${updated.email} is now ${ROLE_LABELS[updated.role]}`);
+      toast.success(`${updated.fullName || updated.email} is now ${ROLE_LABELS[updated.role]}`);
     },
     onError: error => toast.error('Could not change the role', { description: errorMessage(error) }),
   });
@@ -65,13 +77,17 @@ export default function UsersPage() {
   const { user: me, can } = useAuth();
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<Role | typeof ALL>(ALL);
+  const [state, setState] = useState<AccountState | typeof ALL>(ALL);
   const [page, setPage] = useState(0);
   const debouncedSearch = useDebouncedValue(search.trim());
 
   const users = useQuery({
-    queryKey: ['admin-users', debouncedSearch, role, page],
+    queryKey: ['admin-users', debouncedSearch, role, state, page],
     queryFn: () => api.get<Page<UserView>>('/admin/users', {
-      params: { search: debouncedSearch || undefined, role: role === ALL ? undefined : role, page, size: 20 },
+      params: {
+        search: debouncedSearch || undefined, role: role === ALL ? undefined : role,
+        status: state === ALL ? undefined : state, page, size: 20,
+      },
     }).then(r => r.data),
     placeholderData: keepPreviousData,
   });
@@ -80,20 +96,27 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" description="Search accounts and manage what each person can do."
+      <PageHeader title="Users" description="Only people you add can log in. Manage their roles, access and accounts here."
                   actions={canManage && <AddUserDialog />} />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="pl-9" placeholder="Search by email…" aria-label="Search users by email"
+          <Input type="search" className="pl-9" placeholder="Search by name or email…" aria-label="Search users by name or email"
                  value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
         </div>
         <Select value={role} onValueChange={v => { setRole(v as Role | typeof ALL); setPage(0); }}>
-          <SelectTrigger className="sm:w-44" aria-label="Filter by role"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="sm:w-40" aria-label="Filter by role"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>All roles</SelectItem>
             {ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={state} onValueChange={v => { setState(v as AccountState | typeof ALL); setPage(0); }}>
+          <SelectTrigger className="sm:w-40" aria-label="Filter by status"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All statuses</SelectItem>
+            {ACCOUNT_STATES.map(s => <SelectItem key={s} value={s}>{accountStateLabel(s)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -103,7 +126,7 @@ export default function UsersPage() {
       ) : users.isError ? (
         <p role="alert" className="text-destructive">{errorMessage(users.error)}</p>
       ) : users.data.content.length === 0 ? (
-        <EmptyState icon={UserX} title="No users found" description="Try a different search or role filter." />
+        <EmptyState icon={UserX} title="No users found" description="Try a different search, role or status filter." />
       ) : (
         <>
           <Card className={cn('py-0', users.isPlaceholderData && 'opacity-60')}>
@@ -112,35 +135,46 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead className="pl-6">User</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Access</TableHead>
-                  <TableHead className="pr-6 text-right">Joined</TableHead>
+                  <TableHead>Last login</TableHead>
+                  <TableHead className="w-12 pr-6"><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.data.content.map(u => {
                   const isMe = u.email === me?.email;
+                  const deactivated = u.status === 'DEACTIVATED';
                   return (
-                    <TableRow key={u.id}>
+                    <TableRow key={u.id} className={cn(deactivated && 'text-muted-foreground')}>
                       <TableCell className="pl-6">
                         <div className="flex items-center gap-3">
                           <Avatar className="size-8">
-                            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary uppercase">{u.email[0]}</AvatarFallback>
+                            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary uppercase">
+                              {(u.fullName || u.email)[0]}
+                            </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{u.email}</span>
-                          {isMe && <Badge variant="secondary">You</Badge>}
+                          <div className="grid min-w-0">
+                            <span className="flex items-center gap-2 truncate font-medium">
+                              {u.fullName || u.email}
+                              {isMe && <Badge variant="secondary">You</Badge>}
+                            </span>
+                            {u.fullName && <span className="truncate text-xs text-muted-foreground">{u.email}</span>}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         {/* Admins can't change their own role (the API refuses too). */}
-                        {canManage && !isMe ? <RoleSelect user={u} /> : <RoleBadge role={u.role} />}
+                        {canManage && !isMe && !deactivated ? <RoleSelect user={u} /> : <RoleBadge role={u.role} />}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-between gap-2">
-                          <AccessSummary user={u} />
-                          {canManage && !isMe && u.role !== 'ADMIN' && <EditAccessDialog user={u} />}
-                        </div>
+                      <TableCell><AccountStatusBadge status={u.status} /></TableCell>
+                      <TableCell><AccessSummary user={u} /></TableCell>
+                      <TableCell className="text-muted-foreground" title={u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : undefined}>
+                        {lastSeen(u.lastLoginAt)}
                       </TableCell>
-                      <TableCell className="pr-6 text-right text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="pr-6 text-right">
+                        {canManage && !isMe && <UserActions user={u} />}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

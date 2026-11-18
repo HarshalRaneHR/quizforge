@@ -2,6 +2,8 @@ package com.harshal.quizforge.auth;
 
 import java.util.Set;
 import com.harshal.quizforge.auth.AdminUserService.AccessModel;
+import com.harshal.quizforge.auth.AdminUserService.CreatedUser;
+import com.harshal.quizforge.auth.AdminUserService.PasswordReset;
 import com.harshal.quizforge.auth.AdminUserService.UserView;
 import com.harshal.quizforge.common.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,7 +38,7 @@ public class AdminController {
     /** {@code permissions}: adjustable abilities to give the user; omit to use the role's defaults. */
     public record CreateUserRequest(
             @NotBlank @Email String email,
-            @NotBlank @Size(min = 8, max = 72, message = "must be 8-72 characters") String password,
+            @NotBlank @Size(max = 80) String fullName,
             @NotNull Role role,
             Set<Permission> permissions) {}
 
@@ -48,15 +50,16 @@ public class AdminController {
         return adminUsers.accessModel();
     }
 
-    @Operation(summary = "Create a user with a role (and optionally custom access)",
-            description = "Requires user:manage. permissions = the adjustable abilities to give; omit for the role's defaults.")
+    @Operation(summary = "Create a user",
+            description = "Requires user:manage. Returns a one-time temporary password (shown once); the person must "
+                    + "choose their own password at first login. permissions = the adjustable abilities to give; omit for the role's defaults.")
     @ApiResponse(responseCode = "201", description = "User created")
     @ApiResponse(responseCode = "400", description = "Validation failed, or an admin-only permission was requested")
     @ApiResponse(responseCode = "409", description = "Email already registered")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserView createUser(@Valid @RequestBody CreateUserRequest req) {
-        return adminUsers.createUser(req.email(), req.password(), req.role(), req.permissions());
+    public CreatedUser createUser(@Valid @RequestBody CreateUserRequest req) {
+        return adminUsers.createUser(req.email(), req.fullName(), req.role(), req.permissions());
     }
 
     @Operation(summary = "Set a user's adjustable abilities",
@@ -68,20 +71,44 @@ public class AdminController {
         return adminUsers.setAccess(auth.getName(), id, req.permissions());
     }
 
-    @Operation(summary = "Search users", description = "Filter by email text and/or role. Requires user:read.")
+    @Operation(summary = "Reset a user's password",
+            description = "Returns a new one-time temporary password and signs the user out everywhere. Not for your own account.")
+    @ApiResponse(responseCode = "400", description = "Your own account, or the account is deactivated")
+    @PostMapping("/{id}/reset-password")
+    public PasswordReset resetPassword(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
+        return adminUsers.resetPassword(auth.getName(), id);
+    }
+
+    @Operation(summary = "Deactivate a user",
+            description = "Blocks login and ends all sessions immediately. Attempts, grades and quizzes are kept. "
+                    + "Not for your own account or the last active admin.")
+    @ApiResponse(responseCode = "400", description = "Your own account, or the last active admin")
+    @PostMapping("/{id}/deactivate")
+    public UserView deactivate(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
+        return adminUsers.deactivate(auth.getName(), id);
+    }
+
+    @Operation(summary = "Reactivate a deactivated user")
+    @PostMapping("/{id}/reactivate")
+    public UserView reactivate(@Parameter(hidden = true) Authentication auth, @PathVariable Long id) {
+        return adminUsers.reactivate(auth.getName(), id);
+    }
+
+    @Operation(summary = "Search users", description = "Filter by name/email text, role and/or status. Requires user:read.")
     @ApiResponse(responseCode = "200", description = "A page of users")
     @ApiResponse(responseCode = "403", description = "Not an admin")
     @GetMapping
     public PageResponse<UserView> listUsers(
-            @Parameter(description = "Part of an email, case-insensitive") @RequestParam(required = false) String search,
+            @Parameter(description = "Part of a name or email, case-insensitive") @RequestParam(required = false) String search,
             @Parameter(description = "Only users with this role") @RequestParam(required = false) Role role,
+            @Parameter(description = "Only users in this state") @RequestParam(required = false) AccountState status,
             @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return PageResponse.of(adminUsers.search(search, role, pageable));
+        return PageResponse.of(adminUsers.search(search, role, status, pageable));
     }
 
     @Operation(summary = "Change a user's role", description = "Requires user:manage. Resets access to the new role's defaults. Admins can't change their own role.")
     @ApiResponse(responseCode = "200", description = "Role changed")
-    @ApiResponse(responseCode = "400", description = "Invalid role, or tried to change own role")
+    @ApiResponse(responseCode = "400", description = "Invalid role, own role, or the last active admin")
     @ApiResponse(responseCode = "403", description = "Not an admin")
     @ApiResponse(responseCode = "404", description = "User not found")
     @PatchMapping("/{id}/role")

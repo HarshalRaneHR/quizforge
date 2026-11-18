@@ -38,6 +38,7 @@ export function titleFor(pathname: string): string {
   if (pathname.startsWith('/attempts/')) return 'Review attempt';
   if (pathname.startsWith('/studio/')) return 'Quiz builder';
   if (pathname.startsWith('/classrooms/')) return 'Classroom';
+  if (pathname === '/account') return 'Account';
   for (const section of NAV) {
     for (const item of section.items) {
       if (item.end ? pathname === item.to : pathname.startsWith(item.to)) return item.label;

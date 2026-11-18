@@ -119,7 +119,15 @@ function GradebookCard({ classroomId }: { classroomId: number }) {
               <TableBody>
                 {gb.data.rows.map(row => (
                   <TableRow key={row.userId}>
-                    <TableCell className="pl-6 font-medium">{row.email}</TableCell>
+                    <TableCell className="pl-6">
+                      <div className={cn('grid', row.deactivated && 'text-muted-foreground')}>
+                        <span className="font-medium">
+                          {row.fullName || row.email}
+                          {row.deactivated && <span className="ml-2 text-xs font-normal">(deactivated)</span>}
+                        </span>
+                        {row.fullName && <span className="text-xs text-muted-foreground">{row.email}</span>}
+                      </div>
+                    </TableCell>
                     {row.cells.map(cell => (
                       <TableCell key={cell.assignmentId} className={cn('tabular-nums', cellClass(cell.bestPercentage))}>
                         {cell.progress === 'COMPLETED' ? `${cell.bestPercentage}%` : cell.progress === 'IN_PROGRESS'
@@ -251,9 +259,11 @@ export default function ClassroomDetailPage() {
             <ul className="grid gap-1">
               {c.members.map(m => (
                 <li key={m.userId} className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/60">
-                  <span className="flex-1 truncate text-sm">{m.email}</span>
+                  <span className={cn('flex-1 truncate text-sm', m.deactivated && 'text-muted-foreground')} title={m.email}>
+                    {m.fullName || m.email}{m.deactivated && ' (deactivated)'}
+                  </span>
                   <span className="text-xs text-muted-foreground">joined {new Date(m.joinedAt).toLocaleDateString()}</span>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Remove ${m.email}`} onClick={() => removeMember.mutate(m.userId)}><UserMinus /></Button>
+                  <Button variant="ghost" size="icon-sm" aria-label={`Remove ${m.fullName || m.email}`} onClick={() => removeMember.mutate(m.userId)}><UserMinus /></Button>
                 </li>
               ))}
             </ul>

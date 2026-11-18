@@ -144,7 +144,8 @@ public class ClassroomService {
                 return new GradebookCell(a.getId(), progress(s), best(s), s == null ? 0 : s.getSubmitted().intValue());
             }).toList();
             OptionalDouble avg = cells.stream().filter(x -> x.bestPercentage() != null).mapToInt(GradebookCell::bestPercentage).average();
-            return new GradebookRow(u.getId(), u.getEmail(), cells, avg.isPresent() ? (int) Math.round(avg.getAsDouble()) : null);
+            return new GradebookRow(u.getId(), u.getEmail(), u.getFullName(), !u.isActive(), cells,
+                    avg.isPresent() ? (int) Math.round(avg.getAsDouble()) : null);
         }).toList();
         return new Gradebook(c.getId(), c.getName(), as.stream().map(ClassroomService::view).toList(), rows);
     }
@@ -155,12 +156,13 @@ public class ClassroomService {
     public String gradebookCsv(CurrentUser user, Long id) {
         Gradebook g = gradebook(user, id);
         StringBuilder csv = new StringBuilder();
-        List<String> header = new ArrayList<>(List.of("Learner"));
+        List<String> header = new ArrayList<>(List.of("Name", "Email"));
         g.assignments().forEach(a -> header.add(a.quizTitle()));
         header.add("Average");
         csv.append(header.stream().map(ClassroomService::csvCell).collect(Collectors.joining(","))).append("\r\n");
         for (GradebookRow row : g.rows()) {
-            List<String> line = new ArrayList<>(List.of(row.email()));
+            String name = row.fullName() == null ? "" : row.fullName();
+            List<String> line = new ArrayList<>(List.of(row.deactivated() ? name + " (deactivated)" : name, row.email()));
             row.cells().forEach(cell -> line.add(cell.bestPercentage() == null ? "" : String.valueOf(cell.bestPercentage())));
             line.add(row.averagePercentage() == null ? "" : String.valueOf(row.averagePercentage()));
             csv.append(line.stream().map(ClassroomService::csvCell).collect(Collectors.joining(","))).append("\r\n");
@@ -306,7 +308,8 @@ public class ClassroomService {
     private ClassroomDetail detail(Classroom c, CurrentUser user) {
         boolean owner = owns(c, user);
         List<MemberView> members = owner
-                ? c.getMembers().stream().map(m -> new MemberView(m.getUser().getId(), m.getUser().getEmail(), m.getJoinedAt())).toList()
+                ? c.getMembers().stream().map(m -> new MemberView(m.getUser().getId(), m.getUser().getEmail(), m.getUser().getFullName(),
+                        !m.getUser().isActive(), m.getJoinedAt())).toList()
                 : List.of();
         List<AssignmentView> as = c.getAssignments().stream()
                 .filter(a -> owner || a.getQuiz().isListed())

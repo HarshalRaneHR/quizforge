@@ -23,6 +23,7 @@ class UserAccessTest {
 
     @Mock UserRepository users;
     @Mock PasswordEncoder encoder;
+    @Mock RefreshTokenService refreshTokens;
     @InjectMocks AdminUserService service;
 
     private static User user(long id, Role role) {
@@ -59,7 +60,7 @@ class UserAccessTest {
         when(encoder.encode(any())).thenReturn("HASH");
         when(users.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var view = service.createUser("kid@test.com", "secret123", Role.LEARNER, Set.of());
+        var view = service.createUser("kid@test.com", "Kid", Role.LEARNER, Set.of()).user();
 
         assertThat(view.permissions()).isEmpty();
         assertThat(view.customized()).isTrue();

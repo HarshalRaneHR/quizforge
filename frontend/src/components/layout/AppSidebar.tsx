@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { ChevronsUpDown, LogOut, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/auth/auth-context';
+import { displayName, useAuth } from '@/auth/auth-context';
 import { Logo } from '@/components/app/Logo';
 import { RoleBadge } from '@/components/app/RoleBadge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -73,11 +73,11 @@ export function AppSidebar() {
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <Avatar className="size-8 rounded-lg">
                     <AvatarFallback className="rounded-lg bg-primary/15 font-semibold text-primary uppercase">
-                      {user.email[0]}
+                      {displayName(user)[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.email}</span>
+                    <span className="truncate font-medium">{displayName(user)}</span>
                     <span className="truncate text-xs text-muted-foreground capitalize">{user.role.toLowerCase()}</span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
@@ -86,12 +86,16 @@ export function AppSidebar() {
               <DropdownMenuContent className="w-64" side={isMobile ? 'bottom' : 'right'} align="end" sideOffset={4}>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">{user.email}</span>
+                    <span className="truncate font-medium">{displayName(user)}</span>
                     <RoleBadge role={user.role} />
                   </div>
+                  {user.fullName && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[user.role]}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/account" onClick={() => setOpenMobile(false)}><UserRound /> Account</Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => logout().then(() => toast.success('Logged out'))}>
                   <LogOut /> Log out
                 </DropdownMenuItem>

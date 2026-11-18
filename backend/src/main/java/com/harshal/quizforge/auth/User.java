@@ -36,6 +36,33 @@ public class User {
 
     private Instant createdAt = Instant.now();
 
+    @Column(length = 80)
+    private String fullName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AccountStatus status = AccountStatus.ACTIVE;
+
+    /** Set when an admin creates or resets the account: the person must pick their own password first. */
+    private boolean mustChangePassword;
+
+    private Instant lastLoginAt;
+
+    /**
+     * Marker authority while a password change is pending. JwtAuthFilter then allows only the
+     * endpoints needed to change it, whatever the role.
+     */
+    public static final String PASSWORD_CHANGE_REQUIRED = "account:password-change-required";
+
+    public boolean isActive() {
+        return status == AccountStatus.ACTIVE;
+    }
+
+    /** Full name if set, otherwise the email. */
+    public String displayName() {
+        return fullName == null || fullName.isBlank() ? email : fullName;
+    }
+
     /**
      * Per-user changes to the role's defaults: true = granted, false = removed.
      * Eager: it's tiny and needed on every authenticated request.
@@ -63,6 +90,7 @@ public class User {
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
         effectivePermissions().forEach(p -> authorities.add(new SimpleGrantedAuthority(p.authority())));
+        if (mustChangePassword) authorities.add(new SimpleGrantedAuthority(PASSWORD_CHANGE_REQUIRED));
         return authorities;
     }
 

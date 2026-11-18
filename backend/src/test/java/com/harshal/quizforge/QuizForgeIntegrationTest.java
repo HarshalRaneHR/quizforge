@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.admin.password=adminpass123",
         "spring.ai.ollama.base-url=http://localhost:1",   // no model needed for these tests
         "app.jwt.cookie-secure=false",
+        "app.auth.public-signup=true",                  // most tests register throwaway learners
+        "app.admin.require-password-change=false",      // the seeded admin's forced change is covered by unit tests
 })
 class QuizForgeIntegrationTest {
 
@@ -61,6 +63,25 @@ class QuizForgeIntegrationTest {
         MvcResult r = send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}");
         assertThat(r.getResponse().getStatus()).isEqualTo(200);
         return JsonPath.read(r.getResponse().getContentAsString(), "$.token");
+    }
+
+    /** Admin creates the account; returns {id, temporaryPassword}. */
+    private Object[] adminCreates(String admin, String email, String role, String permissionsJson) throws Exception {
+        String perms = permissionsJson == null ? "" : ",\"permissions\":" + permissionsJson;
+        MvcResult r = send("/api/admin/users", admin,
+                "{\"email\":\"" + email + "\",\"fullName\":\"Test Person\",\"role\":\"" + role + "\"" + perms + "}");
+        assertThat(r.getResponse().getStatus()).isEqualTo(201);
+        String body = r.getResponse().getContentAsString();
+        return new Object[]{((Number) JsonPath.read(body, "$.user.id")).longValue(), JsonPath.read(body, "$.temporaryPassword")};
+    }
+
+    /** First login with the one-time password, then choose a real one. Returns a usable token. */
+    private String firstLogin(String email, String temporaryPassword, String newPassword) throws Exception {
+        String pending = login(email, temporaryPassword);
+        MvcResult changed = send("/api/account/password", pending,
+                "{\"currentPassword\":\"" + temporaryPassword + "\",\"newPassword\":\"" + newPassword + "\"}");
+        assertThat(changed.getResponse().getStatus()).isEqualTo(200);
+        return JsonPath.read(changed.getResponse().getContentAsString(), "$.token");
     }
 
     private static String unique(String name) {
@@ -126,11 +147,9 @@ class QuizForgeIntegrationTest {
 
         // A learner created WITHOUT AI generation but WITH the Studio
         String email = unique("custom");
-        MvcResult created = send("/api/admin/users", admin, "{\"email\":\"" + email + "\",\"password\":\"password123\","
-                + "\"role\":\"LEARNER\",\"permissions\":[\"QUIZ_AUTHOR\"]}");
-        assertThat(created.getResponse().getStatus()).isEqualTo(201);
-        long userId = num(created, "$.id").longValue();
-        String token = login(email, "password123");
+        Object[] created = adminCreates(admin, email, "LEARNER", "[\"QUIZ_AUTHOR\"]");
+        long userId = (Long) created[0];
+        String token = firstLogin(email, (String) created[1], "password123");
 
         mvc.perform(get("/api/me").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.permissions[0]").value("quiz:author"))
@@ -151,6 +170,84 @@ class QuizForgeIntegrationTest {
         mvc.perform(put("/api/admin/users/" + userId + "/permissions").header("Authorization", "Bearer " + admin)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"permissions\":[\"USER_MANAGE\"]}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void inviteOnlyAccountLifecycle() throws Exception {
+        String admin = login("admin@test.com", "adminpass123");
+        String email = unique("invited");
+        Object[] created = adminCreates(admin, email, "LEARNER", null);
+        long id = (Long) created[0];
+        String temporary = (String) created[1];
+
+        // First login: everything except /api/me and changing the password is refused
+        MvcResult first = send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"" + temporary + "\"}");
+        assertThat((Boolean) JsonPath.read(first.getResponse().getContentAsString(), "$.mustChangePassword")).isTrue();
+        String pending = JsonPath.read(first.getResponse().getContentAsString(), "$.token");
+        Cookie pendingCookie = first.getResponse().getCookie("qf_refresh");
+        mvc.perform(get("/api/quizzes/explore").header("Authorization", "Bearer " + pending))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + pending))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mustChangePassword").value(true))
+                .andExpect(jsonPath("$.fullName").value("Test Person"));
+
+        // Wrong current password is a 400 (not 401, which the UI would treat as "session expired")
+        assertThat(send("/api/account/password", pending, "{\"currentPassword\":\"nope\",\"newPassword\":\"my-own-pass-1\"}")
+                .getResponse().getStatus()).isEqualTo(400);
+        MvcResult changed = send("/api/account/password", pending,
+                "{\"currentPassword\":\"" + temporary + "\",\"newPassword\":\"my-own-pass-1\"}");
+        assertThat(changed.getResponse().getStatus()).isEqualTo(200);
+        assertThat(changed.getResponse().getCookie("qf_refresh")).isNotNull();
+        String token = JsonPath.read(changed.getResponse().getContentAsString(), "$.token");
+        mvc.perform(get("/api/quizzes/explore").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        // The session that used the temporary password was signed out
+        mvc.perform(post("/api/auth/refresh").cookie(pendingCookie)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/users?search=" + email).header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$.content[0].lastLoginAt").isNotEmpty());
+
+        // Deactivate: the same token stops working at once, and login says why only with the right password
+        MvcResult loggedIn = send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"my-own-pass-1\"}");
+        Cookie liveCookie = loggedIn.getResponse().getCookie("qf_refresh");
+        mvc.perform(post("/api/admin/users/" + id + "/deactivate").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DEACTIVATED"));
+        mvc.perform(get("/api/me").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/refresh").cookie(liveCookie)).andExpect(status().isUnauthorized());
+        assertThat(send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"my-own-pass-1\"}")
+                .getResponse().getContentAsString()).contains("deactivated");
+        assertThat(send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"wrong-pass-1\"}")
+                .getResponse().getStatus()).isEqualTo(401);
+        mvc.perform(get("/api/admin/users?status=DEACTIVATED&search=" + email).header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.content.length()").value(1));
+
+        // Reactivate, then reset a forgotten password: old one stops working, new one-time password is pending
+        mvc.perform(post("/api/admin/users/" + id + "/reactivate").header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        login(email, "my-own-pass-1");
+        MvcResult reset = send("/api/admin/users/" + id + "/reset-password", admin, null);
+        assertThat(reset.getResponse().getStatus()).isEqualTo(200);
+        String newTemporary = JsonPath.read(reset.getResponse().getContentAsString(), "$.temporaryPassword");
+        assertThat(send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"my-own-pass-1\"}")
+                .getResponse().getStatus()).isEqualTo(401);
+        firstLogin(email, newTemporary, "my-own-pass-2");
+
+        // Admins can't lock themselves out
+        long adminId = ((Number) JsonPath.read(mvc.perform(get("/api/admin/users?search=admin@test.com")
+                .header("Authorization", "Bearer " + admin)).andReturn().getResponse().getContentAsString(), "$.content[0].id")).longValue();
+        assertThat(send("/api/admin/users/" + adminId + "/deactivate", admin, null).getResponse().getStatus()).isEqualTo(400);
+    }
+
+    @Test
+    void repeatedFailedLoginsAreThrottled() throws Exception {
+        String email = unique("target");
+        register(email);
+        for (int i = 0; i < 5; i++) {
+            assertThat(send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"guess-" + i + "\"}")
+                    .getResponse().getStatus()).isEqualTo(401);
+        }
+        MvcResult blocked = send("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"password123\"}");
+        assertThat(blocked.getResponse().getStatus()).isEqualTo(429);
+        assertThat(blocked.getResponse().getHeader("Retry-After")).isNotBlank();
     }
 
     @Test
@@ -199,9 +296,7 @@ class QuizForgeIntegrationTest {
     void instructorPublishesLearnerTakesItAndAnalyticsReflectIt() throws Exception {
         String admin = login("admin@test.com", "adminpass123");
         String teacherEmail = unique("teacher");
-        assertThat(send("/api/admin/users", admin,
-                "{\"email\":\"" + teacherEmail + "\",\"password\":\"password123\",\"role\":\"INSTRUCTOR\"}").getResponse().getStatus()).isEqualTo(201);
-        String teacher = login(teacherEmail, "password123");
+        String teacher = firstLogin(teacherEmail, (String) adminCreates(admin, teacherEmail, "INSTRUCTOR", null)[1], "password123");
         String learner = register(unique("learner"));
 
         // Build: true/false + ordering, pass mark 50%

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LoaderCircle, SlidersHorizontal } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/api/client';
 import { AccessCheckboxes } from '@/components/admin/AccessCheckboxes';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAccessModel } from '@/hooks/use-access-model';
@@ -15,8 +15,7 @@ import { ROLE_LABELS } from '@/lib/roles';
 import type { PermissionName, UserView } from '@/types';
 
 /** Turn a single user's abilities on or off. Takes effect on their next request. */
-export function EditAccessDialog({ user }: { user: UserView }) {
-  const [open, setOpen] = useState(false);
+export function EditAccessDialog({ user, open, onOpenChange }: { user: UserView; open: boolean; onOpenChange: (open: boolean) => void }) {
   const model = useAccessModel(open);
   const adjustable = model.data?.adjustable ?? [];
   const current = (user.permissions ?? []).filter(p => adjustable.includes(p));
@@ -29,20 +28,17 @@ export function EditAccessDialog({ user }: { user: UserView }) {
     mutationFn: (permissions: PermissionName[]) => api.put<UserView>(`/admin/users/${user.id}/permissions`, { permissions }).then(r => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast.success(`Access updated for ${user.email}`, { description: 'It applies on their next action, no need to log out.' });
-      setOpen(false);
+      toast.success(`Access updated for ${user.fullName || user.email}`, { description: 'It applies on their next action, no need to log out.' });
+      onOpenChange(false);
     },
   });
 
   return (
-    <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setValue(null); save.reset(); } }}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`Edit access for ${user.email}`}><SlidersHorizontal /></Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) { setValue(null); save.reset(); } }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit access</DialogTitle>
-          <DialogDescription>{user.email} · {ROLE_LABELS[user.role]}</DialogDescription>
+          <DialogDescription>{user.fullName || user.email} · {ROLE_LABELS[user.role]}</DialogDescription>
         </DialogHeader>
         {model.isPending ? <Skeleton className="h-40" /> : (
           <AccessCheckboxes idPrefix={`edit-${user.id}`} adjustable={adjustable} defaults={defaults} role={user.role}
@@ -54,7 +50,7 @@ export function EditAccessDialog({ user }: { user: UserView }) {
         <DialogFooter className="sm:justify-between">
           <Button variant="ghost" onClick={() => setValue(defaults)}>Reset to {ROLE_LABELS[user.role]} defaults</Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button disabled={save.isPending} onClick={() => save.mutate(chosen)}>
               {save.isPending && <LoaderCircle className="animate-spin" />} Save
             </Button>

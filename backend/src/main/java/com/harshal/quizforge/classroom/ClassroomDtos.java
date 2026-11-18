@@ -20,7 +20,8 @@ public final class ClassroomDtos {
     public record ClassroomSummary(Long id, String name, String description, String owner, int memberCount,
                                    int assignmentCount, String joinCode, Instant createdAt) {}
 
-    public record MemberView(Long userId, String email, Instant joinedAt) {}
+    /** {@code deactivated}: the account was switched off by an admin; the history stays. */
+    public record MemberView(Long userId, String email, String fullName, boolean deactivated, Instant joinedAt) {}
 
     public record AssignmentView(Long id, Long quizId, String quizTitle, int questionCount, int totalPoints,
                                  Instant dueAt, Instant createdAt) {}
@@ -38,7 +39,8 @@ public final class ClassroomDtos {
 
     public record GradebookCell(Long assignmentId, Progress progress, Integer bestPercentage, int attempts) {}
 
-    public record GradebookRow(Long userId, String email, List<GradebookCell> cells, Integer averagePercentage) {}
+    public record GradebookRow(Long userId, String email, String fullName, boolean deactivated,
+                               List<GradebookCell> cells, Integer averagePercentage) {}
 
     public record Gradebook(Long classroomId, String classroomName, List<AssignmentView> assignments, List<GradebookRow> rows) {}
 }

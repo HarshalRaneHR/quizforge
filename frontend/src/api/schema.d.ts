@@ -148,6 +148,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update your name */
+        put: operations["updateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/quizzes": {
         parameters: {
             query?: never;
@@ -442,7 +459,7 @@ export interface paths {
         put?: never;
         /**
          * Create an account (role LEARNER)
-         * @description Returns an access token and sets the HttpOnly refresh-token cookie.
+         * @description Only when public sign-up is enabled. Returns an access token and sets the HttpOnly refresh-token cookie.
          */
         post: operations["register"];
         delete?: never;
@@ -540,15 +557,92 @@ export interface paths {
         };
         /**
          * Search users
-         * @description Filter by email text and/or role. Requires user:read.
+         * @description Filter by name/email text, role and/or status. Requires user:read.
          */
         get: operations["listUsers"];
         put?: never;
         /**
-         * Create a user with a role (and optionally custom access)
-         * @description Requires user:manage. permissions = the adjustable abilities to give; omit for the role's defaults.
+         * Create a user
+         * @description Requires user:manage. Returns a one-time temporary password (shown once); the person must choose their own password at first login. permissions = the adjustable abilities to give; omit for the role's defaults.
          */
         post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a user's password
+         * @description Returns a new one-time temporary password and signs the user out everywhere. Not for your own account.
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate a deactivated user */
+        post: operations["reactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a user
+         * @description Blocks login and ends all sessions immediately. Attempts, grades and quizzes are kept. Not for your own account or the last active admin.
+         */
+        post: operations["deactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change your password
+         * @description Needs the current (or temporary) password. Signs out every other session and returns a fresh one for this browser.
+         */
+        post: operations["changePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -686,7 +780,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Current user's email, role and permissions */
+        /**
+         * Current user's email, name, role and permissions
+         * @description mustChangePassword = true means every other endpoint answers 403 PASSWORD_CHANGE_REQUIRED until the password is changed.
+         */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -759,6 +856,26 @@ export interface paths {
         };
         /** Classrooms I've joined */
         get: operations["joined"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Login page settings
+         * @description Whether public sign-up is open (PUBLIC_SIGNUP).
+         */
+        get: operations["config"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1019,6 +1136,8 @@ export interface components {
             /** Format: int64 */
             userId: number;
             email: string;
+            fullName: string;
+            deactivated: boolean;
             /** Format: date-time */
             joinedAt: string;
         };
@@ -1039,11 +1158,26 @@ export interface components {
             /** Format: int64 */
             id: number;
             email: string;
+            fullName: string;
             role: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "PENDING" | "DEACTIVATED";
             permissions: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
             customized: boolean;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            lastLoginAt: string;
+        };
+        UpdateProfileRequest: {
+            fullName: string;
+        };
+        MeResponse: {
+            email: string;
+            fullName: string;
+            role: string;
+            permissions: string[];
+            mustChangePassword: boolean;
         };
         CreateQuizRequest: {
             title: string;
@@ -1138,6 +1272,7 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            fullName?: string;
         };
         ProblemDetail: {
             /** Format: uri */
@@ -1157,8 +1292,10 @@ export interface components {
             /** Format: int64 */
             expiresInSeconds: number;
             email: string;
+            fullName: string;
             role: string;
             permissions: string[];
+            mustChangePassword: boolean;
         };
         LoginRequest: {
             email: string;
@@ -1206,10 +1343,22 @@ export interface components {
         CreateUserRequest: {
             /** Format: email */
             email: string;
-            password: string;
+            fullName: string;
             /** @enum {string} */
             role: "LEARNER" | "INSTRUCTOR" | "ADMIN";
             permissions?: ("QUIZ_GENERATE" | "QUIZ_AUTHOR" | "QUIZ_MANAGE_ALL" | "CLASSROOM_MANAGE" | "USER_READ" | "USER_MANAGE")[];
+        };
+        CreatedUser: {
+            user: components["schemas"]["UserView"];
+            temporaryPassword: string;
+        };
+        PasswordReset: {
+            user: components["schemas"]["UserView"];
+            temporaryPassword: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
         };
         ChangeRoleRequest: {
             /** @enum {string} */
@@ -1350,11 +1499,6 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
-        MeResponse: {
-            email: string;
-            role: string;
-            permissions: string[];
-        };
         ClassroomSummary: {
             /** Format: int64 */
             id: number;
@@ -1390,9 +1534,14 @@ export interface components {
             /** Format: int64 */
             userId: number;
             email: string;
+            fullName: string;
+            deactivated: boolean;
             cells: components["schemas"]["GradebookCell"][];
             /** Format: int32 */
             averagePercentage: number;
+        };
+        AuthConfig: {
+            publicSignup: boolean;
         };
         AttemptSummary: {
             /** Format: int64 */
@@ -1858,6 +2007,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserView"];
+                };
+            };
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
                 };
             };
         };
@@ -2414,6 +2587,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Sign-up is closed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
             /** @description Email already registered */
             409: {
                 headers: {
@@ -2503,6 +2685,24 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
+            /** @description Account deactivated (only told after a correct password) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Too many failed attempts for this email */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
         };
     };
     submit: {
@@ -2530,10 +2730,12 @@ export interface operations {
     listUsers: {
         parameters: {
             query?: {
-                /** @description Part of an email, case-insensitive */
+                /** @description Part of a name or email, case-insensitive */
                 search?: string;
                 /** @description Only users with this role */
                 role?: "LEARNER" | "INSTRUCTOR" | "ADMIN";
+                /** @description Only users in this state */
+                status?: "ACTIVE" | "PENDING" | "DEACTIVATED";
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -2586,7 +2788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserView"];
+                    "application/json": components["schemas"]["CreatedUser"];
                 };
             };
             /** @description Validation failed, or an admin-only permission was requested */
@@ -2595,7 +2797,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserView"];
+                    "application/json": components["schemas"]["CreatedUser"];
                 };
             };
             /** @description Email already registered */
@@ -2604,7 +2806,106 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["CreatedUser"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Your own account, or the account is deactivated */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordReset"];
+                };
+            };
+        };
+    };
+    reactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["UserView"];
+                };
+            };
+        };
+    };
+    deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Your own account, or the last active admin */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password changed; new access token and refresh cookie */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Current password wrong, or new password invalid / unchanged */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
                 };
             };
         };
@@ -2633,7 +2934,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserView"];
                 };
             };
-            /** @description Invalid role, or tried to change own role */
+            /** @description Invalid role, own role, or the last active admin */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2930,6 +3231,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassroomSummary"][];
+                };
+            };
+        };
+    };
+    config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthConfig"];
                 };
             };
         };

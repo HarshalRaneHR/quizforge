@@ -14,12 +14,16 @@ export function FullPageLoader() {
   );
 }
 
-/** Logged-in users only; remembers where they were going. */
+/**
+ * Logged-in users only; remembers where they were going. Someone with a temporary password is
+ * kept on "Set your password" until they choose their own (the server enforces this too).
+ */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const location = useLocation();
   if (status === 'loading') return <FullPageLoader />;
   if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (user?.mustChangePassword && location.pathname !== '/set-password') return <Navigate to="/set-password" replace />;
   return <>{children}</>;
 }
 

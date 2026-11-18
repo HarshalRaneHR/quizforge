@@ -30,6 +30,12 @@ export function setSessionExpiredHandler(handler: () => void) {
   sessionExpiredHandler = handler;
 }
 
+// ---- Called when the server says the user must set their own password first.
+let passwordChangeRequiredHandler: () => void = () => {};
+export function setPasswordChangeRequiredHandler(handler: () => void) {
+  passwordChangeRequiredHandler = handler;
+}
+
 api.interceptors.request.use(config => {
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
@@ -51,6 +57,9 @@ api.interceptors.response.use(
       } catch {
         sessionExpiredHandler();          // refresh token expired/revoked → back to login
       }
+    }
+    if (error.response?.status === 403 && error.response.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      passwordChangeRequiredHandler();
     }
     return Promise.reject(error);
   },

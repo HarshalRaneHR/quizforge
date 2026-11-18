@@ -1,5 +1,6 @@
 package com.harshal.quizforge.auth;
 
+import com.harshal.quizforge.auth.RefreshToken.RevokeReason;
 import com.harshal.quizforge.common.BadRequestException;
 import com.harshal.quizforge.common.ConflictException;
 import com.harshal.quizforge.common.NotFoundException;
@@ -17,23 +18,36 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import static com.harshal.quizforge.auth.UserRepository.Specs.emailContains;
 import static com.harshal.quizforge.auth.UserRepository.Specs.hasRole;
+import static com.harshal.quizforge.auth.UserRepository.Specs.inState;
+import static com.harshal.quizforge.auth.UserRepository.Specs.textMatches;
 
+/**
+ * Accounts are created and looked after by admins (invite-only). People are never deleted:
+ * deactivating keeps their attempts, grades and quizzes intact.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminUserService {
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
+    private final RefreshTokenService refreshTokens;
 
     /** {@code customized}: the user's access differs from their role's defaults. */
-    public record UserView(Long id, String email, String role, List<Permission> permissions, boolean customized, Instant createdAt) {
+    public record UserView(Long id, String email, String fullName, String role, AccountState status,
+                           List<Permission> permissions, boolean customized, Instant createdAt, Instant lastLoginAt) {
         static UserView of(User u) {
             List<Permission> perms = u.effectivePermissions().stream().sorted().toList();
-            return new UserView(u.getId(), u.getEmail(), u.getRole().name(), perms, !u.getPermissionOverrides().isEmpty(), u.getCreatedAt());
+            return new UserView(u.getId(), u.getEmail(), u.getFullName(), u.getRole().name(), AccountState.of(u),
+                    perms, !u.getPermissionOverrides().isEmpty(), u.getCreatedAt(), u.getLastLoginAt());
         }
     }
+
+    /** The one-time password is returned once and never stored in plain text. */
+    public record CreatedUser(UserView user, String temporaryPassword) {}
+
+    public record PasswordReset(UserView user, String temporaryPassword) {}
 
     /** Defaults per role, and which permissions an admin may adjust per user. */
     public record RoleInfo(Role role, List<Permission> defaultPermissions) {}
@@ -49,27 +63,30 @@ public class AdminUserService {
 
     @PreAuthorize("hasAuthority('user:read')")
     @Transactional(readOnly = true)
-    public Page<UserView> search(String emailFilter, Role roleFilter, Pageable pageable) {
-        return users.findAll(emailContains(emailFilter).and(hasRole(roleFilter)), pageable).map(UserView::of);
+    public Page<UserView> search(String text, Role roleFilter, AccountState stateFilter, Pageable pageable) {
+        return users.findAll(textMatches(text).and(hasRole(roleFilter)).and(inState(stateFilter)), pageable).map(UserView::of);
     }
 
     /**
-     * Admin creates an account directly (e.g. an instructor) with a temporary password.
-     * {@code permissions}: the adjustable abilities to give; null = the role's defaults.
+     * Admin creates an account with a generated one-time password. The person must choose their own
+     * password at first login. {@code permissions}: the adjustable abilities to give; null = the role's defaults.
      */
     @PreAuthorize("hasAuthority('user:manage')")
     @Transactional
-    public UserView createUser(String email, String password, Role role, Set<Permission> permissions) {
+    public CreatedUser createUser(String email, String fullName, Role role, Set<Permission> permissions) {
         String normalized = email.trim().toLowerCase();
         if (users.existsByEmail(normalized)) {
             throw new ConflictException("Email already registered");
         }
+        String temporary = TemporaryPasswords.generate();
         User user = new User();
         user.setEmail(normalized);
-        user.setPasswordHash(encoder.encode(password));
+        user.setFullName(AuthDtos.blankToNull(fullName));
+        user.setPasswordHash(encoder.encode(temporary));
+        user.setMustChangePassword(true);
         user.setRole(role);
         if (permissions != null) applyAccess(user, permissions);
-        return UserView.of(users.save(user));
+        return new CreatedUser(UserView.of(users.save(user)), temporary);
     }
 
     /** Changing the role resets access to the new role's defaults (no surprising leftovers). */
@@ -77,6 +94,7 @@ public class AdminUserService {
     @Transactional
     public UserView changeRole(String actingEmail, Long userId, Role newRole) {
         User user = other(actingEmail, userId, "role");
+        if (user.getRole() == Role.ADMIN && newRole != Role.ADMIN) ensureAnotherActiveAdmin(user);
         user.setRole(newRole);   // dirty checking saves it at commit
         user.getPermissionOverrides().clear();
         return UserView.of(user);
@@ -91,6 +109,44 @@ public class AdminUserService {
         return UserView.of(user);
     }
 
+    /** New one-time password for someone who forgot theirs. Signs them out everywhere. */
+    @PreAuthorize("hasAuthority('user:manage')")
+    @Transactional
+    public PasswordReset resetPassword(String actingEmail, Long userId) {
+        User user = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        if (user.getEmail().equals(actingEmail)) {
+            throw new BadRequestException("Change your own password from your Account page");
+        }
+        if (!user.isActive()) {
+            throw new BadRequestException("Reactivate the account before resetting its password");
+        }
+        String temporary = TemporaryPasswords.generate();
+        user.setPasswordHash(encoder.encode(temporary));
+        user.setMustChangePassword(true);
+        refreshTokens.revokeAll(user, RevokeReason.PASSWORD_RESET);
+        return new PasswordReset(UserView.of(user), temporary);
+    }
+
+    /** Blocks login and ends every session immediately. Nothing is deleted. */
+    @PreAuthorize("hasAuthority('user:manage')")
+    @Transactional
+    public UserView deactivate(String actingEmail, Long userId) {
+        User user = other(actingEmail, userId, "account status");
+        if (!user.isActive()) return UserView.of(user);
+        if (user.getRole() == Role.ADMIN) ensureAnotherActiveAdmin(user);
+        user.setStatus(AccountStatus.DEACTIVATED);
+        refreshTokens.revokeAll(user, RevokeReason.DEACTIVATED);
+        return UserView.of(user);
+    }
+
+    @PreAuthorize("hasAuthority('user:manage')")
+    @Transactional
+    public UserView reactivate(String actingEmail, Long userId) {
+        User user = other(actingEmail, userId, "account status");
+        user.setStatus(AccountStatus.ACTIVE);
+        return UserView.of(user);
+    }
+
     static void applyAccess(User user, Set<Permission> wanted) {
         if (user.getRole() == Role.ADMIN) {
             throw new BadRequestException("Admins always have full access; change the role to restrict it");
@@ -101,6 +157,14 @@ public class AdminUserService {
             throw new BadRequestException("These permissions come only with the Admin role: " + notAllowed);
         }
         user.setAccess(wanted);
+    }
+
+    /** QuizForge must always keep at least one admin who can log in. */
+    private void ensureAnotherActiveAdmin(User admin) {
+        long activeAdmins = users.countByRoleAndStatus(Role.ADMIN, AccountStatus.ACTIVE);
+        if (admin.isActive() && activeAdmins <= 1) {
+            throw new BadRequestException("QuizForge needs at least one active admin");
+        }
     }
 
     /** Stops an admin from accidentally changing their own account and locking themselves out. */

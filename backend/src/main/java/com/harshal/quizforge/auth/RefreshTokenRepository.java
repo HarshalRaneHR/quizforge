@@ -28,6 +28,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
             where t.familyId = :family and t.revokedAt is null""")
     int revokeFamily(@Param("family") UUID family, @Param("now") Instant now, @Param("reason") RevokeReason reason);
 
+    /** Ends every session the user has, on every device. */
+    @Modifying
+    @Query("""
+            update RefreshToken t set t.revokedAt = :now, t.revokeReason = :reason
+            where t.user.id = :userId and t.revokedAt is null""")
+    int revokeAllForUser(@Param("userId") Long userId, @Param("now") Instant now, @Param("reason") RevokeReason reason);
+
     @Modifying
     @Query("delete from RefreshToken t where t.expiresAt < :now")
     int deleteExpired(@Param("now") Instant now);

@@ -20,13 +20,19 @@ public class AdminSeeder implements CommandLineRunner {
     @Value("${app.admin.password:}")
     private String password;
 
+    /** The .env password is only a bootstrap: by default the admin must replace it at first login. */
+    @Value("${app.admin.require-password-change:true}")
+    private boolean requirePasswordChange;
+
     @Override
     public void run(String... args) {
         if (email.isBlank() || password.isBlank() || users.existsByEmail(email.toLowerCase())) return;
         User admin = new User();
         admin.setEmail(email.toLowerCase());
+        admin.setFullName("Administrator");
         admin.setPasswordHash(encoder.encode(password));
         admin.setRole(Role.ADMIN);
+        admin.setMustChangePassword(requirePasswordChange);
         users.save(admin);
     }
 }

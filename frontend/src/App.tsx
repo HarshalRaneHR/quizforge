@@ -5,6 +5,8 @@ import { PERMISSIONS } from '@/lib/permissions';
 
 // Route-level code splitting: each page is its own JS chunk, loaded on first visit.
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const SetPasswordPage = lazy(() => import('@/pages/SetPasswordPage'));
+const AccountPage = lazy(() => import('@/pages/AccountPage'));
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const ExplorePage = lazy(() => import('@/pages/ExplorePage'));
@@ -26,6 +28,7 @@ export default function App() {
     <Suspense fallback={<FullPageLoader />}>
       <Routes>
         <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
+        <Route path="/set-password" element={<RequireAuth><SetPasswordPage /></RequireAuth>} />
 
         <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route index element={<DashboardPage />} />
@@ -33,6 +36,7 @@ export default function App() {
           <Route path="quiz/:id" element={<TakeQuizPage />} />
           <Route path="quiz/:id/answers" element={<AnswerKeyPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="account" element={<AccountPage />} />
           <Route path="attempts/:id" element={<ReviewAttemptPage />} />
           <Route path="studio" element={
             <RequirePermission permission={PERMISSIONS.QUIZ_AUTHOR}><StudioPage /></RequirePermission>

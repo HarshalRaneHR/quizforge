@@ -94,6 +94,13 @@ public class RefreshTokenService {
                 .ifPresent(t -> tokens.revokeFamily(t.getFamilyId(), clock.instant(), RevokeReason.LOGOUT));
     }
 
+    /** Signs the user out everywhere (password change, admin reset, deactivation). */
+    @Transactional
+    public void revokeAll(User user, RevokeReason reason) {
+        int revoked = tokens.revokeAllForUser(user.getId(), clock.instant(), reason);
+        if (revoked > 0) log.info("Ended {} session token(s) for user {} ({})", revoked, user.getId(), reason);
+    }
+
     /** Housekeeping: expired tokens are useless, delete them nightly. */
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional

@@ -118,8 +118,11 @@ public class BuiltInQuizSeeder implements CommandLineRunner {
             new SecureRandom().nextBytes(secret);
             User u = new User();
             u.setEmail(LIBRARY_ACCOUNT);
+            u.setFullName("QuizForge Library");
             u.setPasswordHash(encoder.encode(Base64.getEncoder().encodeToString(secret)));
             u.setRole(Role.INSTRUCTOR);
+            // System account that only owns the library quizzes: nobody ever logs in as it.
+            u.setStatus(com.harshal.quizforge.auth.AccountStatus.DEACTIVATED);
             return users.save(u);
         });
     }

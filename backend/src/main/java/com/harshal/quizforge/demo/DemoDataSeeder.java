@@ -62,8 +62,8 @@ public class DemoDataSeeder implements CommandLineRunner {
     public void run(String... args) {
         if (users.existsByEmail(INSTRUCTOR)) return;
         Instant now = clock.instant();
-        User instructor = user(INSTRUCTOR, Role.INSTRUCTOR);
-        User learner = user(LEARNER, Role.LEARNER);
+        User instructor = user(INSTRUCTOR, "Demo Instructor", Role.INSTRUCTOR);
+        User learner = user(LEARNER, "Demo Learner", Role.LEARNER);
 
         Quiz quiz = new Quiz();
         quiz.setTitle("Demo: How the Internet Works");
@@ -98,9 +98,11 @@ public class DemoDataSeeder implements CommandLineRunner {
         log.info("Demo data created: {} / {} (password from DEMO_PASSWORD), classroom code {}", INSTRUCTOR, LEARNER, JOIN_CODE);
     }
 
-    private User user(String email, Role role) {
+    /** Demo accounts use the published demo password, so no forced password change. */
+    private User user(String email, String fullName, Role role) {
         User u = new User();
         u.setEmail(email);
+        u.setFullName(fullName);
         u.setPasswordHash(encoder.encode(password));
         u.setRole(role);
         return users.save(u);

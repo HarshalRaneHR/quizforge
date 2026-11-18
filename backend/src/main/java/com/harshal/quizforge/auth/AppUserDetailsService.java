@@ -24,6 +24,7 @@ public class AppUserDetailsService implements UserDetailsService {
                 .withUsername(user.getEmail())
                 .password(user.getPasswordHash())
                 .authorities(user.authorities())   // ROLE_X + effective permissions (role defaults ± overrides)
+                .disabled(!user.isActive())        // deactivated: refused at login and on every request
                 .build();
     }
 }
